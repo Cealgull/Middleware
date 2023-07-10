@@ -6,6 +6,7 @@ require (
 	github.com/ipfs/go-ipfs-api v0.6.0
 	github.com/labstack/echo/v4 v4.10.2
 	github.com/labstack/gommon v0.4.0
+	golang.org/x/exp v0.0.0-20230213192124-5e25df0256eb
 )
 
 require (
