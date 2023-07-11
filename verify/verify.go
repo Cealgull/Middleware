@@ -49,8 +49,8 @@ func Verify(c echo.Context) error {
 	// use ed25519
 	pubKey := cert.PublicKey.(*ed25519.PublicKey)
 	if ed25519.Verify(*pubKey, decodedCert, []byte(signature)) {
-		username := cert.Subject.CommonName
-		InitSession(c, username)
+		userId := cert.Subject.CommonName
+		InitSession(c, userId)
 		return c.String(http.StatusOK, "OK")
 	} else {
 		return c.String(http.StatusUnauthorized, "Unauthorized")
@@ -74,7 +74,7 @@ func Filter(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
-func InitSession(c echo.Context, username string) {
+func InitSession(c echo.Context, userId string) {
 	sess, _ := session.Get("session", c)
 	sess.Options = &sessions.Options{
 		Path:     "/",
@@ -82,6 +82,6 @@ func InitSession(c echo.Context, username string) {
 		HttpOnly: true,
 	}
 	sess.Values["valid"] = "valid"
-	sess.Values["username"] = username
+	sess.Values["userId"] = userId
 	sess.Save(c.Request(), c.Response())
 }
