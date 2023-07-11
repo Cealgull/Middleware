@@ -21,8 +21,7 @@ var e *echo.Echo
 var specialEndpoints = []string{
 	"/",
 	"/register",
-	"/uploadFile",
-	"/uploadString",
+	"/upload",
 }
 
 func main() {
@@ -72,8 +71,7 @@ func main() {
 		}
 		return c.String(http.StatusOK, "Hello, World!")
 	})
-	e.POST("/uploadFile", ipfs.UploadFile)
-	e.POST("/uploadString", ipfs.UploadString)
+	e.POST("/upload", ipfs.Upload)
 	e.POST("/register", firefly.Register)
 
 	e.Logger.Fatal(e.Start(":1323"))

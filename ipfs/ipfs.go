@@ -18,33 +18,43 @@ func Init(url string) {
 	sh = shell.NewShell(url)
 }
 
-func UploadString(c echo.Context) error {
+func Upload(c echo.Context) error {
+	fmt.Println("Upload Endpoint Hit")
+
+	inputString := c.FormValue("inputString")
+	if inputString != "" {
+		return uploadString(c)
+	} else {
+		return uploadFile(c)
+	}
+}
+
+func uploadString(c echo.Context) error {
 	fmt.Println("Upload String Endpoint Hit")
 
-	input := c.FormValue("input")
-	fmt.Println("Input:", input)
+	inputString := c.FormValue("inputString")
+	fmt.Println("UploadString:", inputString)
 
-	cid, err := sh.Add(strings.NewReader(input))
+	cid, err := sh.Add(strings.NewReader(inputString))
 	if err != nil {
-		return err
+		return c.String(http.StatusInternalServerError, err.Error())
 	}
 	fmt.Println("CID:", cid)
 
 	return c.String(http.StatusOK, cid)
 }
 
-func UploadFile(c echo.Context) error {
+func uploadFile(c echo.Context) error {
 	fmt.Println("Upload File Endpoint Hit")
 
-	fileHeader, err := c.FormFile("file")
+	fileHeader, err := c.FormFile("uploadFile")
 	if err != nil {
-		return err
+		return c.String(http.StatusBadRequest, err.Error())
 	}
 
 	file, err := fileHeader.Open()
 	if err != nil {
-		fmt.Println("Error opening file")
-		return err
+		return c.String(http.StatusInternalServerError, err.Error())
 	}
 	defer file.Close()
 
@@ -54,14 +64,13 @@ func UploadFile(c echo.Context) error {
 
 	fileBytes, err := io.ReadAll(file)
 	if err != nil {
-		fmt.Println("Error reading file")
-		return err
+		return c.String(http.StatusInternalServerError, err.Error())
 	}
 
 	buffer := bytes.NewBuffer(fileBytes)
 	cid, err := sh.Add(buffer)
 	if err != nil {
-		return err
+		return c.String(http.StatusInternalServerError, err.Error())
 	}
 	fmt.Println("CID:", cid)
 
