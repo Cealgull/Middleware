@@ -36,7 +36,7 @@ func Verify(c echo.Context) error {
 	client := &http.Client{}
 	res, err := client.Do(req)
 	if err != nil {
-		return err
+		return c.String(http.StatusUnauthorized, err.Error())
 	}
 	if res.StatusCode != http.StatusOK {
 		return c.String(http.StatusUnauthorized, "Unauthorized")
