@@ -39,11 +39,6 @@ func Verify(c echo.Context) error {
 		return c.String(http.StatusUnauthorized, "Unauthorized")
 	}
 
-	/*
-		fmt.Println("Signature:", decodedSignature)
-		fmt.Println("Cert:", reqCert)
-	*/
-
 	// redirect the request to the CA
 	// uncomment the following code if CA is ready
 	/*
@@ -74,11 +69,6 @@ func Verify(c echo.Context) error {
 		fmt.Println("failed to parse certificate", err)
 		return c.String(http.StatusUnauthorized, "Unauthorized")
 	}
-	/*
-		fmt.Println("cert:", x509cert)
-		fmt.Println("cert.PublicKey:", x509cert.PublicKey)
-		fmt.Println("cert.Subject.CommonName:", x509cert.Subject.CommonName)
-	*/
 	fmt.Println("cert.Subject.CommonName:", x509cert.Subject.CommonName)
 
 	// use ed25519 as the crypto algorithm
