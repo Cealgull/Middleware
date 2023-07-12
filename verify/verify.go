@@ -1,55 +1,90 @@
 package verify
 
 import (
-	"context"
-	"fmt"
-	"net/http"
-	"net/url"
+	"Cealgull_middleware/config"
 
 	"crypto/ed25519"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/json"
+	"encoding/pem"
+	"fmt"
+	"net/http"
 
 	"github.com/gorilla/sessions"
 	"github.com/labstack/echo-contrib/session"
 	"github.com/labstack/echo/v4"
 )
 
+var Config config.MiddlewareConfig
+
 func Verify(c echo.Context) error {
 	fmt.Println("Verify Endpoint Hit")
 
-	// get signature and encoded cert from header
-	signature := c.Request().Header.Get("Signature")
-	encodedCert := c.Request().Header.Get("Cert")
-	if signature == "" || encodedCert == "" {
+	// get signature from header, and cert from body
+	encodedSignature := c.Request().Header.Get("Signature")
+	decodedSignature, err := base64.StdEncoding.DecodeString(encodedSignature)
+	if err != nil {
+		fmt.Println("failed to decode signature", err)
 		return c.String(http.StatusUnauthorized, "Unauthorized")
 	}
+
+	jsonMap := make(map[string]interface{})
+	err = json.NewDecoder(c.Request().Body).Decode(&jsonMap)
+	if err != nil {
+		return c.String(http.StatusBadRequest, "Parse JSON error")
+	}
+	reqCert := jsonMap["cert"].(string)
+	if reqCert == "" {
+		return c.String(http.StatusUnauthorized, "Unauthorized")
+	}
+
+	/*
+		fmt.Println("Signature:", decodedSignature)
+		fmt.Println("Cert:", reqCert)
+	*/
 
 	// redirect the request to the CA
-	// TODO: modify ca url
-	caURL := "http://localhost:1111/verify"
+	// uncomment the following code if CA is ready
+	/*
+		caURL := Config.Ca.Url
+		req := c.Request().Clone(context.Background())
+		req.URL, _ = url.Parse(caURL)
+		req.RequestURI = ""
 
-	req := c.Request().Clone(context.Background())
-	req.URL, _ = url.Parse(caURL)
-	req.RequestURI = ""
+		client := &http.Client{}
+		res, err := client.Do(req)
+		if err != nil {
+			return c.String(http.StatusUnauthorized, err.Error())
+		}
+		if res.StatusCode != http.StatusOK {
+			return c.String(http.StatusUnauthorized, "Unauthorized")
+		}
+	*/
 
-	client := &http.Client{}
-	res, err := client.Do(req)
-	if err != nil {
-		return c.String(http.StatusUnauthorized, err.Error())
-	}
-	if res.StatusCode != http.StatusOK {
+	block, _ := pem.Decode([]byte(reqCert))
+	if block == nil || block.Type != "CERTIFICATE" {
+		fmt.Println("failed to decode PEM block containing certificate")
+		fmt.Printf("block: %v\ntype: %s\n", block, block.Type)
 		return c.String(http.StatusUnauthorized, "Unauthorized")
 	}
 
-	decodedCert, _ := base64.StdEncoding.DecodeString(encodedCert)
-	cert, _ := x509.ParseCertificate(decodedCert)
+	x509cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		fmt.Println("failed to parse certificate", err)
+		return c.String(http.StatusUnauthorized, "Unauthorized")
+	}
+	/*
+		fmt.Println("cert:", x509cert)
+		fmt.Println("cert.PublicKey:", x509cert.PublicKey)
+		fmt.Println("cert.Subject.CommonName:", x509cert.Subject.CommonName)
+	*/
+	fmt.Println("cert.Subject.CommonName:", x509cert.Subject.CommonName)
 
-	// pubKeyAlgo := cert.PublicKeyAlgorithm
-	// use ed25519
-	pubKey := cert.PublicKey.(*ed25519.PublicKey)
-	if ed25519.Verify(*pubKey, decodedCert, []byte(signature)) {
-		userId := cert.Subject.CommonName
+	// use ed25519 as the crypto algorithm
+	pubKey := x509cert.PublicKey.(ed25519.PublicKey)
+	if ed25519.Verify(pubKey, block.Bytes, decodedSignature) {
+		userId := x509cert.Subject.CommonName
 		InitSession(c, userId)
 		return c.String(http.StatusOK, "OK")
 	} else {
@@ -84,4 +119,10 @@ func InitSession(c echo.Context, userId string) {
 	sess.Values["valid"] = "valid"
 	sess.Values["userId"] = userId
 	sess.Save(c.Request(), c.Response())
+}
+
+func Login(c echo.Context) error {
+	fmt.Println("Login Endpoint Hit")
+	// TODO: return userprofile (if not exist, register)
+	return nil
 }
