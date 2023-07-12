@@ -12,6 +12,11 @@ firefly:
   url:
     - http://<host>:<port>
     - http://<host>:<port>
+  apiPrefix: /api/v1/namespaces/default/apis/
+  apiName:
+    userprofile: userprofile<version number>
+    topic: topic<version number>
+    post: post<version number>
 ca:
   url: http://<host>:<port>
 ```

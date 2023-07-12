@@ -26,6 +26,8 @@ type UserProfile struct {
 
 var Config config.MiddlewareConfig
 
+var baseURL = Config.Firefly.Url[0] + Config.Firefly.ApiPrefix + Config.Firefly.ApiName.Userprofile
+
 func Register(c echo.Context) error {
 	fmt.Println("Register Endpoint Hit")
 
@@ -37,7 +39,7 @@ func Register(c echo.Context) error {
 	avatar := "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
 	signature := ""
 
-	requestURL := fmt.Sprintf("%s/api/v1/namespaces/default/apis/userprofile011/invoke/CreateUser", Config.Firefly.Url[0])
+	requestURL := baseURL + "/invoke/CreateUser"
 	requestBody := fmt.Sprintf(`"input":{"userId": "%s", "username": "%s", "avatar": "%s", "signature": "%s"},"key":""`, userId, username, avatar, signature)
 	res, err := http.Post(requestURL, "application/json", bytes.NewBuffer([]byte(requestBody)))
 	if err != nil {
