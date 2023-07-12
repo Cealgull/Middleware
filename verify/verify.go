@@ -2,14 +2,17 @@ package verify
 
 import (
 	"Cealgull_middleware/config"
+	"Cealgull_middleware/firefly"
+	"net/http"
 
 	"crypto/ed25519"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
-	"net/http"
+	"time"
 
 	"github.com/gorilla/sessions"
 	"github.com/labstack/echo-contrib/session"
@@ -25,18 +28,17 @@ func Verify(c echo.Context) error {
 	encodedSignature := c.Request().Header.Get("Signature")
 	decodedSignature, err := base64.StdEncoding.DecodeString(encodedSignature)
 	if err != nil {
-		fmt.Println("failed to decode signature", err)
-		return c.String(http.StatusUnauthorized, "Unauthorized")
+		return errors.New("failed to decode signature: " + err.Error())
 	}
 
 	jsonMap := make(map[string]interface{})
 	err = json.NewDecoder(c.Request().Body).Decode(&jsonMap)
 	if err != nil {
-		return c.String(http.StatusBadRequest, "Parse JSON error")
+		return errors.New("failed to decode json: " + err.Error())
 	}
-	reqCert := jsonMap["cert"].(string)
-	if reqCert == "" {
-		return c.String(http.StatusUnauthorized, "Unauthorized")
+	reqCert, res := jsonMap["cert"]
+	if !res {
+		return errors.New("failed to get cert from request body")
 	}
 
 	// redirect the request to the CA
@@ -57,17 +59,14 @@ func Verify(c echo.Context) error {
 		}
 	*/
 
-	block, _ := pem.Decode([]byte(reqCert))
+	block, _ := pem.Decode([]byte(reqCert.(string)))
 	if block == nil || block.Type != "CERTIFICATE" {
-		fmt.Println("failed to decode PEM block containing certificate")
-		fmt.Printf("block: %v\ntype: %s\n", block, block.Type)
-		return c.String(http.StatusUnauthorized, "Unauthorized")
+		return errors.New("failed to decode PEM block containing certificate")
 	}
 
 	x509cert, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
-		fmt.Println("failed to parse certificate", err)
-		return c.String(http.StatusUnauthorized, "Unauthorized")
+		return errors.New("failed to parse certificate: " + err.Error())
 	}
 	fmt.Println("cert.Subject.CommonName:", x509cert.Subject.CommonName)
 
@@ -76,9 +75,9 @@ func Verify(c echo.Context) error {
 	if ed25519.Verify(pubKey, block.Bytes, decodedSignature) {
 		userId := x509cert.Subject.CommonName
 		InitSession(c, userId)
-		return c.String(http.StatusOK, "OK")
+		return nil
 	} else {
-		return c.String(http.StatusUnauthorized, "Unauthorized")
+		return errors.New("failed to verify signature")
 	}
 }
 
@@ -93,7 +92,10 @@ func Filter(next echo.HandlerFunc) echo.HandlerFunc {
 		ifValid := sess.Values["valid"]
 
 		if ifValid != "valid" {
-			return Verify(c)
+			err := Verify(c)
+			if err != nil {
+				return c.String(http.StatusUnauthorized, err.Error())
+			}
 		}
 		return next(c)
 	}
@@ -113,6 +115,42 @@ func InitSession(c echo.Context, userId string) {
 
 func Login(c echo.Context) error {
 	fmt.Println("Login Endpoint Hit")
-	// TODO: return userprofile (if not exist, register)
-	return nil
+	sess, _ := session.Get("session", c)
+	userId := sess.Values["userId"]
+
+	readUserRes, err := firefly.ReadUserLogin(c, userId.(string))
+	if err != nil {
+		return c.String(http.StatusInternalServerError, err.Error())
+	}
+	defer readUserRes.Body.Close()
+
+	if readUserRes.StatusCode == 200 {
+		return c.Stream(http.StatusOK, "application/json", readUserRes.Body)
+	}
+
+	registerRes, err := firefly.Register(c)
+	if err != nil {
+		return c.String(http.StatusInternalServerError, err.Error())
+	}
+	defer registerRes.Body.Close()
+
+	fmt.Println("registerRes.StatusCode:", registerRes.StatusCode)
+
+	if registerRes.StatusCode == http.StatusOK {
+		count := 0
+		for count < 10 {
+			// wait for the user to be registered
+			time.Sleep(100 * time.Millisecond)
+			readUserRes, err := firefly.ReadUserLogin(c, userId.(string))
+			if err != nil {
+				return c.String(http.StatusInternalServerError, err.Error())
+			}
+			defer readUserRes.Body.Close()
+
+			if readUserRes.StatusCode == 200 {
+				return c.Stream(http.StatusOK, "application/json", readUserRes.Body)
+			}
+		}
+	}
+	return c.String(http.StatusInternalServerError, "failed to login")
 }

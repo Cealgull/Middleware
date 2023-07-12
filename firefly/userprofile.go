@@ -4,8 +4,8 @@ import (
 	"Cealgull_middleware/config"
 
 	"bytes"
+	"encoding/json"
 	"fmt"
-	"io"
 	"math/rand"
 	"net/http"
 	"strconv"
@@ -15,20 +15,13 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-type UserProfile struct {
-	IdentityId string   `json:"identityId"`
-	Username   string   `json:"username"`
-	Avatar     string   `json:"avatar"`
-	Signature  string   `json:"signature"`
-	Roles      []string `json:"roles,omitempty" metadata:"roles,optional" `
-	Badge      []string `json:"badge,omitempty" metadata:"badge,optional" `
-}
-
 var Config config.MiddlewareConfig
 
-var baseURL = Config.Firefly.Url[0] + Config.Firefly.ApiPrefix + Config.Firefly.ApiName.Userprofile
+func baseURL() string {
+	return Config.Firefly.Url[0] + Config.Firefly.ApiPrefix + Config.Firefly.ApiName.Userprofile
+}
 
-func Register(c echo.Context) error {
+func Register(c echo.Context) (*http.Response, error) {
 	fmt.Println("Register Endpoint Hit")
 
 	sess, _ := session.Get("session", c)
@@ -39,22 +32,40 @@ func Register(c echo.Context) error {
 	avatar := "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
 	signature := ""
 
-	requestURL := baseURL + "/invoke/CreateUser"
-	requestBody := fmt.Sprintf(`"input":{"userId": "%s", "username": "%s", "avatar": "%s", "signature": "%s"},"key":""`, userId, username, avatar, signature)
-	res, err := http.Post(requestURL, "application/json", bytes.NewBuffer([]byte(requestBody)))
+	requestURL := baseURL() + "/invoke/CreateUser"
+	requestBody := fmt.Sprintf(`{"input":{"userId": "%s", "username": "%s", "avatar": "%s", "signature": "%s"},"key":""}`, userId, username, avatar, signature)
+	return http.Post(requestURL, "application/json", bytes.NewBuffer([]byte(requestBody)))
+}
+
+func ReadUser(c echo.Context) error {
+	fmt.Println("ReadUser Endpoint Hit")
+
+	jsonMap := make(map[string]interface{})
+	err := json.NewDecoder(c.Request().Body).Decode(&jsonMap)
 	if err != nil {
-		fmt.Println("Error:", err)
-		return err
+		return c.String(http.StatusBadRequest, "Parse JSON error")
+	}
+	userId := jsonMap["userId"].(string)
+	if userId == "" {
+		return c.String(http.StatusBadRequest, "userId not found")
+	}
+
+	res, err := readUserImpl(c, userId)
+	if err != nil {
+		return c.String(http.StatusInternalServerError, "ReadUser error")
 	}
 	defer res.Body.Close()
+	return c.Stream(res.StatusCode, "application/json", res.Body)
+}
 
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		fmt.Println("Error:", err)
-		return err
-	}
+func ReadUserLogin(c echo.Context, userId string) (*http.Response, error) {
+	fmt.Println("ReadUserLogin Endpoint Hit")
+	return readUserImpl(c, userId)
+}
 
-	fmt.Println("Response Body:", string(body))
-
-	return c.JSON(res.StatusCode, string(body))
+func readUserImpl(c echo.Context, userId string) (*http.Response, error) {
+	fmt.Println("readUserImpl Endpoint Hit")
+	requestURL := baseURL() + "/query/ReadUser"
+	requestBody := fmt.Sprintf(`{"input":{"userId": "%s"},"key":""}`, userId)
+	return http.Post(requestURL, "application/json", bytes.NewBuffer([]byte(requestBody)))
 }

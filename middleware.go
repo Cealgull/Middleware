@@ -24,8 +24,8 @@ var e *echo.Echo
 var specialEndpoints = []string{
 	"/",
 	"/upload",
-	"/register",
 	"/login",
+	"/readUser",
 }
 
 var Config config.MiddlewareConfig
@@ -94,8 +94,8 @@ func main() {
 		return c.String(http.StatusOK, "Hello, World!")
 	})
 	e.POST("/upload", ipfs.Upload)
-	e.POST("/register", firefly.Register)
 	e.POST("/login", verify.Login)
+	e.POST("/readUser", firefly.ReadUser)
 
 	e.Logger.Fatal(e.Start(fmt.Sprintf(":%s", Config.Port)))
 }
