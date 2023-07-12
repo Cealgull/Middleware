@@ -1,10 +1,12 @@
 package main
 
 import (
+	"Cealgull_middleware/config"
 	"Cealgull_middleware/firefly"
 	"Cealgull_middleware/ipfs"
 	"Cealgull_middleware/verify"
 
+	"fmt"
 	"net/http"
 	"net/url"
 
@@ -13,6 +15,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
+	"github.com/spf13/viper"
 	"golang.org/x/exp/slices"
 )
 
@@ -20,39 +23,58 @@ var e *echo.Echo
 
 var specialEndpoints = []string{
 	"/",
-	"/register",
 	"/upload",
+	"/register",
+	"/login",
 }
 
-func main() {
-	ipfs.Init("localhost:6001")
+var Config config.MiddlewareConfig
 
+func main() {
+	// init config
+	viper.SetConfigName("config")
+	viper.SetConfigType("yaml")
+	viper.AddConfigPath("/etc/cealgull-middleware")
+	viper.AddConfigPath(".")
+
+	err := viper.ReadInConfig()
+	if err != nil {
+		panic(err)
+	}
+
+	err = viper.Unmarshal(&Config)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(Config)
+
+	firefly.Config = Config
+
+	// init ipfs
+	ipfs.Init(Config.Ipfs.Url)
+
+	// init firefly targets
+	var fireflyTargets []*middleware.ProxyTarget
+	for _, fireflyURL := range Config.Firefly.Url {
+		target, err := url.Parse(fireflyURL)
+		if err != nil {
+			panic(err)
+		}
+		fireflyTargets = append(fireflyTargets, &middleware.ProxyTarget{
+			URL: target,
+		})
+	}
+
+	// init echo
 	e = echo.New()
 	e.Logger.SetLevel(log.DEBUG)
 	e.Use(middleware.Logger())
-
-	url1, err := url.Parse("http://localhost:5000")
-	if err != nil {
-		e.Logger.Fatal(err)
-	}
-
-	url2, err := url.Parse("http://localhost:5001")
-	if err != nil {
-		e.Logger.Fatal(err)
-	}
 
 	e.Use(middleware.ProxyWithConfig(middleware.ProxyConfig{
 		Skipper: func(c echo.Context) bool {
 			return slices.Contains(specialEndpoints, c.Path())
 		},
-		Balancer: middleware.NewRoundRobinBalancer([]*middleware.ProxyTarget{
-			{
-				URL: url1,
-			},
-			{
-				URL: url2,
-			},
-		}),
+		Balancer: middleware.NewRoundRobinBalancer(fireflyTargets),
 	}))
 
 	e.Use(session.Middleware(sessions.NewCookieStore([]byte("secret"))))
@@ -73,6 +95,7 @@ func main() {
 	})
 	e.POST("/upload", ipfs.Upload)
 	e.POST("/register", firefly.Register)
+	e.POST("/login", verify.Login)
 
-	e.Logger.Fatal(e.Start(":1323"))
+	e.Logger.Fatal(e.Start(fmt.Sprintf(":%s", Config.Port)))
 }

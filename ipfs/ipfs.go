@@ -14,7 +14,7 @@ import (
 var sh *shell.Shell
 
 func Init(url string) {
-	fmt.Println("IPFS Init")
+	fmt.Println("IPFS Init at", url)
 	sh = shell.NewShell(url)
 }
 
