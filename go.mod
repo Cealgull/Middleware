@@ -3,6 +3,7 @@ module Cealgull_middleware
 go 1.20
 
 require (
+	github.com/google/uuid v1.3.0
 	github.com/gorilla/sessions v1.2.1
 	github.com/ipfs/go-ipfs-api v0.6.0
 	github.com/labstack/echo-contrib v0.15.0
