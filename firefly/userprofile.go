@@ -29,7 +29,7 @@ func Register(c echo.Context) (*http.Response, error) {
 	// random username by default
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	username := "用户" + strconv.Itoa(r.Intn(900000)+100000)
-	avatar := "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
+	avatar := "QmfTT625M15eaWUXPqkvZZZQWPrDvRa68GL2FBk6qD6sJr"
 	signature := ""
 
 	requestURL := userprofileBaseURL() + "/invoke/CreateUser"
