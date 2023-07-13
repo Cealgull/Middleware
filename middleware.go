@@ -25,7 +25,7 @@ var specialEndpoints = []string{
 	"/",
 	"/upload",
 	"/login",
-	"/readUser",
+	"/getUserProfile",
 	"/createTopic",
 	"/createPost",
 	"/getAllTopics",
@@ -99,7 +99,7 @@ func main() {
 	})
 	e.POST("/upload", ipfs.Upload)
 	e.POST("/login", verify.Login)
-	e.POST("/readUser", firefly.ReadUser)
+	e.GET("/getUserProfile", firefly.ReadUser)
 	e.POST("/createTopic", firefly.CreateTopic)
 	e.POST("/createPost", firefly.CreatePost)
 	e.GET("/getAllTopics", firefly.GetAllTopics)

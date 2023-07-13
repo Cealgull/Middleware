@@ -4,7 +4,6 @@ import (
 	"Cealgull_middleware/config"
 
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"math/rand"
 	"net/http"
@@ -40,15 +39,7 @@ func Register(c echo.Context) (*http.Response, error) {
 func ReadUser(c echo.Context) error {
 	fmt.Println("ReadUser Endpoint Hit")
 
-	jsonMap := make(map[string]interface{})
-	err := json.NewDecoder(c.Request().Body).Decode(&jsonMap)
-	if err != nil {
-		return c.String(http.StatusBadRequest, "Parse JSON error")
-	}
-	userId := jsonMap["userId"].(string)
-	if userId == "" {
-		return c.String(http.StatusBadRequest, "userId not found")
-	}
+	userId := c.QueryParam("userId")
 
 	res, err := readUserImpl(userId)
 	if err != nil {
