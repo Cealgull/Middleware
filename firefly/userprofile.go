@@ -17,7 +17,7 @@ import (
 
 var Config config.MiddlewareConfig
 
-func baseURL() string {
+func userprofileBaseURL() string {
 	return Config.Firefly.Url[0] + Config.Firefly.ApiPrefix + Config.Firefly.ApiName.Userprofile
 }
 
@@ -32,7 +32,7 @@ func Register(c echo.Context) (*http.Response, error) {
 	avatar := "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
 	signature := ""
 
-	requestURL := baseURL() + "/invoke/CreateUser"
+	requestURL := userprofileBaseURL() + "/invoke/CreateUser"
 	requestBody := fmt.Sprintf(`{"input":{"userId": "%s", "username": "%s", "avatar": "%s", "signature": "%s"},"key":""}`, userId, username, avatar, signature)
 	return http.Post(requestURL, "application/json", bytes.NewBuffer([]byte(requestBody)))
 }
@@ -50,7 +50,7 @@ func ReadUser(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "userId not found")
 	}
 
-	res, err := readUserImpl(c, userId)
+	res, err := readUserImpl(userId)
 	if err != nil {
 		return c.String(http.StatusInternalServerError, "ReadUser error")
 	}
@@ -60,12 +60,12 @@ func ReadUser(c echo.Context) error {
 
 func ReadUserLogin(c echo.Context, userId string) (*http.Response, error) {
 	fmt.Println("ReadUserLogin Endpoint Hit")
-	return readUserImpl(c, userId)
+	return readUserImpl(userId)
 }
 
-func readUserImpl(c echo.Context, userId string) (*http.Response, error) {
+func readUserImpl(userId string) (*http.Response, error) {
 	fmt.Println("readUserImpl Endpoint Hit")
-	requestURL := baseURL() + "/query/ReadUser"
+	requestURL := userprofileBaseURL() + "/query/ReadUser"
 	requestBody := fmt.Sprintf(`{"input":{"userId": "%s"},"key":""}`, userId)
 	return http.Post(requestURL, "application/json", bytes.NewBuffer([]byte(requestBody)))
 }
