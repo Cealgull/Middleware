@@ -72,7 +72,7 @@ func Verify(c echo.Context) error {
 
 	// use ed25519 as the crypto algorithm
 	pubKey := x509cert.PublicKey.(ed25519.PublicKey)
-	if ed25519.Verify(pubKey, block.Bytes, decodedSignature) {
+	if ed25519.Verify(pubKey, []byte(reqCert.(string)), decodedSignature) {
 		userId := x509cert.Subject.CommonName
 		InitSession(c, userId)
 		return nil
@@ -105,7 +105,7 @@ func InitSession(c echo.Context, userId string) {
 	sess, _ := session.Get("session", c)
 	sess.Options = &sessions.Options{
 		Path:     "/",
-		MaxAge:   120, // 2 minutes for testing
+		MaxAge:   3600, // 60 minutes for testing
 		HttpOnly: true,
 	}
 	sess.Values["valid"] = "valid"
@@ -136,9 +136,10 @@ func Login(c echo.Context) error {
 
 	fmt.Println("registerRes.StatusCode:", registerRes.StatusCode)
 
-	if registerRes.StatusCode == http.StatusOK {
+	if registerRes.StatusCode == http.StatusAccepted {
 		count := 0
-		for count < 10 {
+		for count < 30 {
+			count++
 			// wait for the user to be registered
 			time.Sleep(100 * time.Millisecond)
 			readUserRes, err := firefly.ReadUserLogin(c, userId.(string))
