@@ -18,6 +18,30 @@ func Init(url string) {
 	sh = shell.NewShell(url)
 }
 
+func PutString(inputString string) (string, error) {
+	fmt.Println("PutString Endpoint Hit")
+
+	cid, err := sh.Add(strings.NewReader(inputString))
+	if err != nil {
+		return "", err
+	}
+	fmt.Println("CID:", cid)
+
+	return cid, nil
+}
+
+func PutFile(file *bytes.Buffer) (string, error) {
+	fmt.Println("PutFile Endpoint Hit")
+
+	cid, err := sh.Add(file)
+	if err != nil {
+		return "", err
+	}
+	fmt.Println("CID:", cid)
+
+	return cid, nil
+}
+
 func Upload(c echo.Context) error {
 	fmt.Println("Upload Endpoint Hit")
 
