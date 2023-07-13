@@ -74,3 +74,16 @@ func createTopicImpl(topicId string, cid string, operator string, title string, 
 	requestBody := fmt.Sprintf(`{"input":{"topicId": "%s", "cid": "%s", "operator": "%s", "title": "%s", "category": "%s", "tags": "%s", "images": "%s"},"key":""}`, topicId, cid, operator, title, category, tags, images)
 	return http.Post(requestURL, "application/json", bytes.NewBuffer([]byte(requestBody)))
 }
+
+func GetAllTopics(c echo.Context) error {
+	fmt.Println("GetAllTopics Endpoint Hit")
+	requestURL := topicBaseURL() + "/query/GetAllTopics"
+	requestBody := `{"input":{},"key":""}`
+	res, err := http.Post(requestURL, "application/json", bytes.NewBuffer([]byte(requestBody)))
+	if err != nil {
+		return c.String(http.StatusInternalServerError, "GetAllTopics error")
+	}
+	defer res.Body.Close()
+
+	return c.Stream(res.StatusCode, "application/json", res.Body)
+}

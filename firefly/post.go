@@ -73,3 +73,18 @@ func createPostImpl(postId string, cid string, operator string, belongTo string,
 	requestBody := fmt.Sprintf(`{"input":{"postId": "%s", "cid": "%s", "operator": "%s", "belongTo": "%s", "replyTo": "%s", "images": "%s"},"key":""}`, postId, cid, operator, belongTo, replyTo, images)
 	return http.Post(requestURL, "application/json", bytes.NewBuffer([]byte(requestBody)))
 }
+
+func QueryPostsByBelongTo(c echo.Context) error {
+	fmt.Println("QueryPostsByBelongTo Endpoint Hit")
+
+	belongTo := c.QueryParam("belongTo")
+	requestURL := postBaseURL() + "/query/QueryPostsByBelongTo"
+	requestBody := fmt.Sprintf(`{"input":{"belongTo": "%s"},"key":""}`, belongTo)
+	res, err := http.Post(requestURL, "application/json", bytes.NewBuffer([]byte(requestBody)))
+	if err != nil {
+		return c.String(http.StatusInternalServerError, "GetAllTopics error")
+	}
+	defer res.Body.Close()
+
+	return c.Stream(res.StatusCode, "application/json", res.Body)
+}

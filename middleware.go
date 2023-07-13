@@ -28,6 +28,8 @@ var specialEndpoints = []string{
 	"/readUser",
 	"/createTopic",
 	"/createPost",
+	"/getAllTopics",
+	"/queryPostsByBelongTo",
 }
 
 var Config config.MiddlewareConfig
@@ -100,6 +102,8 @@ func main() {
 	e.POST("/readUser", firefly.ReadUser)
 	e.POST("/createTopic", firefly.CreateTopic)
 	e.POST("/createPost", firefly.CreatePost)
+	e.GET("/getAllTopics", firefly.GetAllTopics)
+	e.GET("/queryPostsByBelongTo", firefly.QueryPostsByBelongTo)
 
 	e.Logger.Fatal(e.Start(fmt.Sprintf(":%s", Config.Port)))
 }
