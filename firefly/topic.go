@@ -87,3 +87,18 @@ func GetAllTopics(c echo.Context) error {
 
 	return c.Stream(res.StatusCode, "application/json", res.Body)
 }
+
+func QueryTopicsByTag(c echo.Context) error {
+	fmt.Println("QueryTopicsByTag Endpoint Hit")
+
+	tag := c.QueryParam("tag")
+	requestURL := topicBaseURL() + "/query/QueryTopicsByTag"
+	requestBody := fmt.Sprintf(`{"input":{"tag": "%s"},"key":""}`, tag)
+	res, err := http.Post(requestURL, "application/json", bytes.NewBuffer([]byte(requestBody)))
+	if err != nil {
+		return c.String(http.StatusInternalServerError, "QueryTopicsByTag error")
+	}
+	defer res.Body.Close()
+
+	return c.Stream(res.StatusCode, "application/json", res.Body)
+}

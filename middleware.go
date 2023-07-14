@@ -30,6 +30,7 @@ var specialEndpoints = []string{
 	"/createPost",
 	"/getAllTopics",
 	"/queryPostsByBelongTo",
+	"/queryTopicsByTag",
 }
 
 var Config config.MiddlewareConfig
@@ -104,6 +105,7 @@ func main() {
 	e.POST("/createPost", firefly.CreatePost)
 	e.GET("/getAllTopics", firefly.GetAllTopics)
 	e.GET("/queryPostsByBelongTo", firefly.QueryPostsByBelongTo)
+	e.GET("/queryTopicsByTag", firefly.QueryTopicsByTag)
 
 	e.Logger.Fatal(e.Start(fmt.Sprintf(":%s", Config.Port)))
 }
