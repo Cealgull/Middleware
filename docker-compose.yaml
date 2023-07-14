@@ -1,0 +1,16 @@
+version: "3.9"
+
+services:
+  middleware:
+    build: .
+    ports:
+      - 8080:8080
+    volumes:
+      - ./config.yaml:/etc/cealgull-middleware/config.yaml:ro
+    networks:
+      - fabric
+
+networks:
+  fabric:
+    name: fabric_test
+    external: true
