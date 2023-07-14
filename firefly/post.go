@@ -64,6 +64,11 @@ func CreatePost(c echo.Context) error {
 	}
 	defer res.Body.Close()
 
+	err = RenewTopicUpdateTime(post.BelongTo)
+	if err != nil {
+		return c.String(http.StatusInternalServerError, err.Error())
+	}
+
 	return c.NoContent(http.StatusNoContent)
 }
 
@@ -82,9 +87,23 @@ func QueryPostsByBelongTo(c echo.Context) error {
 	requestBody := fmt.Sprintf(`{"input":{"belongTo": "%s"},"key":""}`, belongTo)
 	res, err := http.Post(requestURL, "application/json", bytes.NewBuffer([]byte(requestBody)))
 	if err != nil {
-		return c.String(http.StatusInternalServerError, "GetAllTopics error")
+		return c.String(http.StatusInternalServerError, "QueryPostsByBelongTo error")
 	}
 	defer res.Body.Close()
 
 	return c.Stream(res.StatusCode, "application/json", res.Body)
+}
+
+func RenewTopicUpdateTime(topicId string) error {
+	fmt.Println("RenewTopicUpdateTime Endpoint Hit")
+
+	requestURL := topicBaseURL() + "/invoke/RenewTopicUpdateTime"
+	requestBody := fmt.Sprintf(`{"input":{"topicId": "%s"},"key":""}`, topicId)
+	res, err := http.Post(requestURL, "application/json", bytes.NewBuffer([]byte(requestBody)))
+	if err != nil {
+		return fmt.Errorf("RenewTopicUpdateTime error")
+	}
+	defer res.Body.Close()
+
+	return nil
 }
