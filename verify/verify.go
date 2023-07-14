@@ -3,6 +3,8 @@ package verify
 import (
 	"Cealgull_middleware/config"
 	"Cealgull_middleware/firefly"
+	"bytes"
+	"io"
 	"net/http"
 
 	"crypto/ed25519"
@@ -19,6 +21,10 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+type CACert struct {
+	Cert string `json:"cert"`
+}
+
 var Config config.MiddlewareConfig
 
 func Verify(c echo.Context) error {
@@ -31,35 +37,31 @@ func Verify(c echo.Context) error {
 		return errors.New("failed to decode signature: " + err.Error())
 	}
 
-	jsonMap := make(map[string]interface{})
-	err = json.NewDecoder(c.Request().Body).Decode(&jsonMap)
+	var reqCert CACert
+	if err := c.Bind(&reqCert); err != nil {
+		return err
+	}
+
+	caURL := Config.Ca.Url
+	b, _ := json.Marshal(reqCert)
+	caReq, err := http.NewRequest("POST", caURL, bytes.NewBuffer(b))
 	if err != nil {
-		return errors.New("failed to decode json: " + err.Error())
+		return errors.New("failed to create request to CA")
 	}
-	reqCert, res := jsonMap["cert"]
-	if !res {
-		return errors.New("failed to get cert from request body")
+	caReq.Header.Set("content-type", "application/json")
+	caReq.Header.Set("Signature", encodedSignature)
+	client := &http.Client{}
+	caRes, err := client.Do(caReq)
+	if err != nil {
+		return errors.New("send cert to CA failed " + err.Error())
 	}
+	if caRes.StatusCode != http.StatusOK {
+		bytes, _ := io.ReadAll(caRes.Body)
+		return errors.New("ca verify failed " + string(bytes))
+	}
+	fmt.Println("CA verified", caRes.StatusCode, caRes.Body)
 
-	// redirect the request to the CA
-	// uncomment the following code if CA is ready
-	/*
-		caURL := Config.Ca.Url
-		req := c.Request().Clone(context.Background())
-		req.URL, _ = url.Parse(caURL)
-		req.RequestURI = ""
-
-		client := &http.Client{}
-		res, err := client.Do(req)
-		if err != nil {
-			return c.String(http.StatusUnauthorized, err.Error())
-		}
-		if res.StatusCode != http.StatusOK {
-			return c.String(http.StatusUnauthorized, "Unauthorized")
-		}
-	*/
-
-	block, _ := pem.Decode([]byte(reqCert.(string)))
+	block, _ := pem.Decode([]byte(reqCert.Cert))
 	if block == nil || block.Type != "CERTIFICATE" {
 		return errors.New("failed to decode PEM block containing certificate")
 	}
@@ -72,7 +74,7 @@ func Verify(c echo.Context) error {
 
 	// use ed25519 as the crypto algorithm
 	pubKey := x509cert.PublicKey.(ed25519.PublicKey)
-	if ed25519.Verify(pubKey, []byte(reqCert.(string)), decodedSignature) {
+	if ed25519.Verify(pubKey, []byte(reqCert.Cert), decodedSignature) {
 		userId := x509cert.Subject.CommonName
 		InitSession(c, userId)
 		return nil

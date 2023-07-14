@@ -54,6 +54,7 @@ func main() {
 	fmt.Println(Config)
 
 	firefly.Config = Config
+	verify.Config = Config
 
 	// init ipfs
 	ipfs.Init(Config.Ipfs.Url)
