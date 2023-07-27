@@ -2,9 +2,8 @@ port: 8080
 ipfs:
   url: ipfs_0:5001
 firefly:
-  url:
+  urls:
     - http://firefly_core_0:5000
-    - http://firefly_core_1:5001
   apiPrefix: /api/v1/namespaces/default/apis/
   apiName:
     userprofile: userprofile<version number>
