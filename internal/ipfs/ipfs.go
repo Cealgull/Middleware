@@ -15,7 +15,7 @@ type IPFSManager struct {
 
 type Option func(mgr *IPFSManager) error
 
-func NewIPFSManager(url string, logger *zap.Logger) (*IPFSManager, error) {
+func NewIPFSManager(logger *zap.Logger, url string) (*IPFSManager, error) {
 
 	var mgr IPFSManager
 	sh := IPFS.NewShell(url)
