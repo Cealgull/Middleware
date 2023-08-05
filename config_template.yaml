@@ -1,13 +1,27 @@
 port: 8080
+
 ipfs:
-  url: ipfs_0:5001
+  url: localhost:5001
+
+gateway:
+  channel: mychannel
+  mspID: Org1MSP
+  cryptoPath: fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/users
+  user: User1@org1.example.com
+  peerEndpoint: localhost:7051
+  peerGateway: peer0.org1.example.com
+
+postgres:
+  host: localhost
+  port: 1001
+  name: cealgull
+  user: cealgull 
+
 firefly:
   urls:
-    - http://firefly_core_0:5000
+    - http://localhost:5000
   apiPrefix: /api/v1/namespaces/default/apis/
   apiName:
-    userprofile: userprofile<version number>
-    topic: topic<version number>
-    post: post<version number>
-ca:
-  url: http://localhost:1000
+    userprofile: userprofile
+    topic: topic
+    post: post1
