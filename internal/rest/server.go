@@ -48,8 +48,10 @@ func WithEndpoint(endpoint RestEndpoint) Option {
 func NewRestServer(host string, port int, options ...Option) (*RestServer, error) {
 
 	var rest RestServer
+
 	rest.addr = fmt.Sprintf("%s:%d", host, port)
 	rest.echo = echo.New()
+	rest.echo.Use(middleware.Logger())
 	rest.echo.HideBanner = true
 
 	for _, option := range options {
