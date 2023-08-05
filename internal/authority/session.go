@@ -9,7 +9,7 @@ import (
 var signatureMissingError *SignatureMissingError = &SignatureMissingError{}
 var certMissingError *CertMissingError = &CertMissingError{}
 
-func (ca *CertAuthority) signSession(c echo.Context, userId string) error {
+func (ca *CertAuthority) signSession(c echo.Context, wallet string) error {
 	s, _ := session.Get("session", c)
 	s.Options = &sessions.Options{
 		Path:     "/",
@@ -17,7 +17,7 @@ func (ca *CertAuthority) signSession(c echo.Context, userId string) error {
 		HttpOnly: true,
 	}
 	s.Values["authorized"] = true
-	s.Values["userId"] = userId
+	s.Values["wallet"] = wallet
 	return s.Save(c.Request(), c.Response())
 }
 
@@ -31,7 +31,7 @@ func (ca *CertAuthority) ValidateSession(next echo.HandlerFunc) echo.HandlerFunc
 
 		s, _ := session.Get("session", c)
 
-		if !s.Values["authorized"].(bool) {
+    if v,ok := s.Values["authorized"].(bool); !ok || !v {
 
 			var reqcert CACert
 
@@ -50,8 +50,8 @@ func (ca *CertAuthority) ValidateSession(next echo.HandlerFunc) echo.HandlerFunc
 			if err != nil {
 				return c.JSON(err.Status(), err.Message())
 			}
-
-			return ca.signSession(c, cert.Subject.CommonName)
+      
+			var _ = ca.signSession(c, cert.Subject.CommonName)
 		}
 
 		return next(c)
