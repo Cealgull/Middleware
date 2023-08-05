@@ -3,7 +3,7 @@ package main
 import (
 	"github.com/Cealgull/Middleware/internal/authority"
 	"github.com/Cealgull/Middleware/internal/config"
-	"github.com/Cealgull/Middleware/internal/firefly"
+	"github.com/Cealgull/Middleware/internal/fabric"
 	"github.com/Cealgull/Middleware/internal/ipfs"
 	"github.com/Cealgull/Middleware/internal/rest"
 	"go.uber.org/zap"
@@ -18,7 +18,8 @@ func main() {
 	viper.AddConfigPath("/etc/cealgull-middleware")
 	viper.AddConfigPath(".")
 
-	var config config.MiddlewareConfig
+	config := config.MiddlewareConfig{}
+
 	logger, _ := zap.NewProduction()
 
 	err := viper.ReadInConfig()
@@ -33,16 +34,20 @@ func main() {
 		logger.Panic(err.Error())
 	}
 
-	im, _ := ipfs.NewIPFSManager(config.Ipfs.Url, logger)
-	ca := authority.NewCertAuthority(logger, config.Ca.Url)
-	ff, _ := firefly.NewFireflyDialer(im, logger, &config.Firefly)
+	ipfs, _ := ipfs.NewIPFSManager(logger, config.Ipfs.URL)
+	ca := authority.NewCertAuthority(logger, config.Verify.URL)
+
+	fab, err := fabric.NewGatewayMiddleware(logger, &config)
+
+	if err != nil {
+		logger.Panic(err.Error())
+	}
 
 	r, _ := rest.NewRestServer(config.Host,
 		config.Port,
-		rest.WithLogger(logger),
 		rest.WithEndpoint(ca),
-		rest.WithEndpoint(im),
-		rest.WithEndpoint(ff),
+		rest.WithEndpoint(ipfs),
+    rest.WithEndpoint(fab),
 	)
 
 	r.Start()
