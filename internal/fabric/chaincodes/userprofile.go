@@ -278,7 +278,7 @@ func queryUser(logger *zap.Logger, db *gorm.DB) ChaincodeQuery {
 	}
 }
 
-func NewUserProfileMiddleware(logger *zap.Logger, db *gorm.DB, net *client.Network) *ChaincodeMiddleware {
+func NewUserProfileMiddleware(logger *zap.Logger, net *client.Network, db *gorm.DB) *ChaincodeMiddleware {
 
 	return NewChaincodeMiddleware(logger, net, "userprofile",
 
