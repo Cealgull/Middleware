@@ -9,28 +9,25 @@ import (
 )
 
 type TopicBlock struct {
-	Hash      string    `json:"hash"`
-	Title     string    `json:"title"`
-	Creator   string    `json:"creator"`
-	CID       string    `json:"cid"`
-	CreateAt  time.Time `json:"createAt"`
-	UpdateAt  time.Time `json:"updateAt"`
-	DeletedAt time.Time `json:"deletedAt"`
-	Category  string    `json:"category"`
-	Tags      []uint    `json:"tags"`
-	Images    []string  `json:"images"`
+	Hash     string   `json:"hash"`
+	Title    string   `json:"title"`
+	Creator  string   `json:"creator"`
+	CID      string   `json:"cid"`
+	Category string   `json:"category"`
+	Tags     []uint   `json:"tags"`
+	Images   []string `json:"images"`
 }
 
 type Topic struct {
 	gorm.Model
-	Hash     string `gorm:"index"`
-	Title    string
-	Wallet   string `gorm:"index" json:"-"`
-	Creator  *User  `gorm:"foreignKey:Wallet,references:Wallet"`
-	Content  string
-	Category string
-	Tags     []*TopicTag
-	Assets   []*Asset
+	Hash          string `gorm:"uniqueIndex"`
+	Title         string `gorm:"not null"`
+	CreatorWallet string
+	Creator       *User       `gorm:"references:Wallet"`
+	Content       string      `gorm:"not null"`
+	Category      string      `gorm:"not null"`
+	Tags          []*TopicTag `gorm:"foreignkey:ID"`
+	Assets        []*Asset    `gorm:"foreignkey:CID"`
 }
 
 func (t *Topic) MarshalJSON() ([]byte, error) {
@@ -66,8 +63,9 @@ func (t *Topic) MarshalJSON() ([]byte, error) {
 }
 
 type TopicTag struct {
-	ID          uint   `gorm:"primaryKey" json:"-"`
-	Name        string `gorm:"index" json:"name"`
-	Creator     *User  `gorm:"foreignKey:ID"`
-	Description string `json:"description"`
+	ID            uint   `gorm:"primaryKey" json:"-"`
+	Name          string `gorm:"not null"   json:"name"`
+	CreatorWallet string `gorm:"not null"`
+	Creator       *User  `gorm:"references:Wallet"`
+	Description   string `json:"description"`
 }
