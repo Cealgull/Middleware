@@ -33,15 +33,15 @@ func (m *IPFSManager) upload(c echo.Context) error {
 		payload, err := c.FormFile("payload")
 
 		if err != nil {
-			return c.JSON(fileMissingError.Status(),
-				fileMissingError.Message())
+			return c.JSON(uploadFileMissingError.Status(),
+				uploadFileMissingError.Message())
 		}
 
 		file, err := payload.Open()
 
 		if err != nil {
-			return c.JSON(fileMissingError.Status(),
-				fileMissingError.Message())
+			return c.JSON(uploadFileMissingError.Status(),
+				uploadFileMissingError.Message())
 		}
 
 		if _, err := m.Put(file); err != nil {
@@ -49,7 +49,7 @@ func (m *IPFSManager) upload(c echo.Context) error {
 		}
 
 	} else {
-		return c.JSON(headerMissingError.Status(), headerMissingError.Message())
+		return c.JSON(uploadHeaderMissingError.Status(), uploadHeaderMissingError.Message())
 	}
 
 	return c.JSON(success.Status(), success.Message())
