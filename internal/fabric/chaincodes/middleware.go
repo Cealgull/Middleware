@@ -11,24 +11,45 @@ type ChaincodeInvoke func(contract *client.Contract, c echo.Context) error
 
 type ChaincodeEventCallback func(payload []byte) error
 
+type ChaincodeQuery echo.HandlerFunc
+
+type ChaincodeCustom echo.HandlerFunc
+
 type ChaincodeMiddleware struct {
-	name      string
-	net       *client.Network
-	contract  *client.Contract
-	cc_invokes   map[string]ChaincodeInvoke
-	cc_callbacks map[string]ChaincodeEventCallback
-  api_invokes  map[string]echo.HandlerFunc
-	logger    *zap.Logger
+	name     string
+	net      *client.Network
+	contract *client.Contract
+
+	invokes   map[string]ChaincodeInvoke
+	callbacks map[string]ChaincodeEventCallback
+	queries   map[string]ChaincodeQuery
+
+	custom map[string]ChaincodeCustom
+	logger *zap.Logger
 }
 
 type ChaincodeMiddlewareOption func(cc *ChaincodeMiddleware) error
 
 func WithChaincodeHandler(action string, eventName string, invoke ChaincodeInvoke, callback ChaincodeEventCallback) ChaincodeMiddlewareOption {
 	return func(cc *ChaincodeMiddleware) error {
-		cc.cc_invokes[action] = invoke
-		cc.cc_callbacks[eventName] = callback
+		cc.invokes[action] = invoke
+		cc.callbacks[eventName] = callback
 		return nil
 	}
+}
+
+func WithChaincodeQuery(token string, query ChaincodeQuery) ChaincodeMiddlewareOption {
+	return func(cc *ChaincodeMiddleware) error {
+		cc.queries[token] = query
+		return nil
+	}
+}
+
+func WithChaincodeCustom(location string, custom ChaincodeCustom) ChaincodeMiddlewareOption {
+  return func(cc *ChaincodeMiddleware) error {
+    cc.custom[location] = custom
+    return nil
+  }
 }
 
 func NewChaincodeMiddleware(logger *zap.Logger, net *client.Network, ccName string, options ...ChaincodeMiddlewareOption) *ChaincodeMiddleware {
@@ -36,8 +57,10 @@ func NewChaincodeMiddleware(logger *zap.Logger, net *client.Network, ccName stri
 		name:      ccName,
 		net:       net,
 		contract:  net.GetContract(ccName),
-		cc_invokes:   make(map[string]ChaincodeInvoke),
-		cc_callbacks: make(map[string]ChaincodeEventCallback),
+		invokes:   make(map[string]ChaincodeInvoke),
+		callbacks: make(map[string]ChaincodeEventCallback),
+		queries:   make(map[string]ChaincodeQuery),
+		custom:    make(map[string]ChaincodeCustom),
 		logger:    logger,
 	}
 
@@ -47,19 +70,34 @@ func NewChaincodeMiddleware(logger *zap.Logger, net *client.Network, ccName stri
 	return &cc
 }
 
-func (cc *ChaincodeMiddleware) registerInvoke(action string, invoke ChaincodeInvoke) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			err := invoke(cc.contract, c)
-			return err
-		}
-}
+func (cc *ChaincodeMiddleware) Register(g *echo.Group, e *echo.Echo) {
 
-func (cc *ChaincodeMiddleware) Register(g *echo.Group) {
-  
-  i := g.Group("/invoke")
+	i := g.Group("/invoke")
 
-	for action, invoke := range cc.cc_invokes {
-		i.POST("/"+action, cc.registerInvoke(action, invoke))
+	for action, invoke := range cc.invokes {
+		i.POST("/"+action, func(invoke ChaincodeInvoke) echo.HandlerFunc {
+			return func(c echo.Context) error {
+				return invoke(cc.contract, c)
+			}
+		}(invoke))
+	}
+
+	q := g.Group("/query")
+
+	for action, query := range cc.queries {
+		q.POST("/"+action, func(query ChaincodeQuery) echo.HandlerFunc {
+			return func(c echo.Context) error {
+				return query(c)
+			}
+		}(query))
+	}
+
+	for location, custom := range cc.custom {
+		e.POST(location, func(custom ChaincodeCustom) echo.HandlerFunc {
+			return func(c echo.Context) error {
+				return custom(c)
+			}
+		}(custom))
 	}
 
 }
@@ -74,10 +112,14 @@ func (cc *ChaincodeMiddleware) Listen(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case event := <-ch:
-			callback, _ := cc.cc_callbacks[event.EventName]
+			callback, _ := cc.callbacks[event.EventName]
 			cc.logger.Info("Received Ledger Event", zap.String("name", event.EventName))
 			if callback != nil {
-				callback(event.Payload)
+				go func(data []byte) {
+					if err := callback(data); err != nil {
+						cc.logger.Error("Error when calling event callback", zap.Error(err))
+					}
+				}(event.Payload)
 			}
 		}
 	}
