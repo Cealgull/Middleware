@@ -9,9 +9,10 @@ import (
 
 type Asset struct {
 	gorm.Model
-	Creator     User   `gorm:"foreignKey:ID"`
-	ContentType string `json:"contentType"`
-	CID         string `json:"cid"`
+	CreatorWallet string
+	Creator       *User  `gorm:"references:Wallet"`
+	ContentType   string `gorm:"not null" json:"contentType"`
+	CID           string `gorm:"uniqueIndex,not null" json:"cid"`
 }
 
 func (a *Asset) MarshalJSON() ([]byte, error) {
