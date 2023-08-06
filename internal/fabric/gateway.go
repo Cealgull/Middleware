@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/Cealgull/Middleware/internal/config"
-	"github.com/Cealgull/Middleware/internal/fabric/offchain"
 	"github.com/Cealgull/Middleware/internal/fabric/chaincodes"
+	"github.com/Cealgull/Middleware/internal/fabric/offchain"
 	"github.com/hyperledger/fabric-gateway/pkg/client"
 	"github.com/hyperledger/fabric-gateway/pkg/identity"
 	"github.com/labstack/echo/v4"
@@ -21,7 +21,7 @@ import (
 )
 
 type GatewayMiddleware struct {
-	db *gorm.DB
+  db *gorm.DB
 	cm map[string]*chaincodes.ChaincodeMiddleware
   logger *zap.Logger
 }
@@ -127,7 +127,7 @@ func initNetwork(config *config.GatewayConfig) (*client.Network, error) {
 
 func NewGatewayMiddleware(l *zap.Logger, config *config.MiddlewareConfig) (*GatewayMiddleware, error) {
 
-	db, err := offchain.NewDatabaseStore(&config.Postgres)
+  db, err := offchain.NewPostgresStore(&config.Postgres)
 
 	if err != nil {
 		return nil, err
@@ -153,10 +153,11 @@ func NewGatewayMiddleware(l *zap.Logger, config *config.MiddlewareConfig) (*Gate
 func (g *GatewayMiddleware) Register(e *echo.Echo) error {
 	for n, m := range g.cm {
 		c := e.Group("/api/" + n)
-		m.Register(c)
+		m.Register(c,e)
 		go func(m *chaincodes.ChaincodeMiddleware) {
 			m.Listen(context.Background())
 		}(m)
 	}
+
 	return nil
 }
