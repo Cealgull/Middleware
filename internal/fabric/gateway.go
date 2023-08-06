@@ -11,6 +11,7 @@ import (
 	"github.com/Cealgull/Middleware/internal/config"
 	"github.com/Cealgull/Middleware/internal/fabric/chaincodes"
 	"github.com/Cealgull/Middleware/internal/fabric/offchain"
+	"github.com/Cealgull/Middleware/internal/ipfs"
 	"github.com/hyperledger/fabric-gateway/pkg/client"
 	"github.com/hyperledger/fabric-gateway/pkg/identity"
 	"github.com/labstack/echo/v4"
@@ -21,9 +22,9 @@ import (
 )
 
 type GatewayMiddleware struct {
-  db *gorm.DB
-	cm map[string]*chaincodes.ChaincodeMiddleware
-  logger *zap.Logger
+	db     *gorm.DB
+	cm     map[string]*chaincodes.ChaincodeMiddleware
+	logger *zap.Logger
 }
 
 func loadCertificate(certPath string) (*x509.Certificate, error) {
@@ -125,27 +126,28 @@ func initNetwork(config *config.GatewayConfig) (*client.Network, error) {
 	return gateway.GetNetwork(config.Channel), nil
 }
 
-func NewGatewayMiddleware(l *zap.Logger, config *config.MiddlewareConfig) (*GatewayMiddleware, error) {
+func NewGatewayMiddleware(logger *zap.Logger, ipfs *ipfs.IPFSManager, config *config.MiddlewareConfig) (*GatewayMiddleware, error) {
 
-  db, err := offchain.NewPostgresStore(&config.Postgres)
+	db, err := offchain.NewPostgresStore(&config.Postgres)
 
 	if err != nil {
 		return nil, err
 	}
 
-  network, err := initNetwork(&config.Gateway)
+	network, err := initNetwork(&config.Gateway)
 
-  if err != nil {
-    return nil, err
-  }
+	if err != nil {
+		return nil, err
+	}
 
 	cm := make(map[string]*chaincodes.ChaincodeMiddleware)
-	cm["user"] = chaincodes.NewUserProfileMiddleware(l,db, network)
+	cm["user"] = chaincodes.NewUserProfileMiddleware(logger, network, db)
+	cm["topic"] = chaincodes.NewTopicChaincodeMiddleware(logger, network, ipfs, db)
 
 	return &GatewayMiddleware{
-		db: db,
-		cm: cm,
-    logger: l,
+		db:     db,
+		cm:     cm,
+		logger: logger,
 	}, nil
 
 }
@@ -153,7 +155,7 @@ func NewGatewayMiddleware(l *zap.Logger, config *config.MiddlewareConfig) (*Gate
 func (g *GatewayMiddleware) Register(e *echo.Echo) error {
 	for n, m := range g.cm {
 		c := e.Group("/api/" + n)
-		m.Register(c,e)
+		m.Register(c, e)
 		go func(m *chaincodes.ChaincodeMiddleware) {
 			m.Listen(context.Background())
 		}(m)

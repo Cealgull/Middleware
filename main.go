@@ -37,7 +37,7 @@ func main() {
 	ipfs, _ := ipfs.NewIPFSManager(logger, config.Ipfs.URL)
 	ca := authority.NewCertAuthority(logger, config.Verify.URL)
 
-	fab, err := fabric.NewGatewayMiddleware(logger, &config)
+	fab, err := fabric.NewGatewayMiddleware(logger, ipfs, &config)
 
 	if err != nil {
 		logger.Panic(err.Error())
@@ -47,7 +47,7 @@ func main() {
 		config.Port,
 		rest.WithEndpoint(ca),
 		rest.WithEndpoint(ipfs),
-    rest.WithEndpoint(fab),
+		rest.WithEndpoint(fab),
 	)
 
 	r.Start()
