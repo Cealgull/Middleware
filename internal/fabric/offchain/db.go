@@ -8,7 +8,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func NewDatabaseStore(config *config.PostgresConfig) (*gorm.DB, error) {
+func NewPostgresStore(config *config.PostgresConfig) (*gorm.DB, error) {
 
 	db, err := gorm.Open(postgres.New(
 		postgres.Config{
@@ -17,18 +17,44 @@ func NewDatabaseStore(config *config.PostgresConfig) (*gorm.DB, error) {
 				config.Port,
 				config.User,
 				config.Name),
-		}), &gorm.Config{})
+		}), &gorm.Config{
+		FullSaveAssociations: true,
+	})
 
 	if err != nil {
 		return nil, err
 	}
 
-	if err := db.AutoMigrate(&models.User{},
-		&models.Profile{},
+	if err := db.AutoMigrate(
 		&models.Role{},
-		&models.Badge{}); err != nil {
+		&models.Badge{},
+	); err != nil {
 		return nil, err
 	}
+
+	if err := db.AutoMigrate(&models.User{}); err != nil {
+		return nil, err
+	}
+
+	if err := db.AutoMigrate(&models.Profile{}); err != nil {
+		return nil, err
+	}
+
+  if err := db.AutoMigrate(&models.Topic{}); err != nil {
+    return nil, err
+  }
+
+  if err := db.AutoMigrate(&models.Asset{}); err != nil {
+    return nil, err
+  }
+
+  if err := db.AutoMigrate(&models.TopicTag{}); err != nil {
+    return nil, err
+  }
+
+  if err := db.AutoMigrate(&models.Post{}); err != nil {
+    return nil, err
+  }
 
 	return db, err
 }
