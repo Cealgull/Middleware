@@ -24,15 +24,16 @@ type PostBlock struct {
 }
 
 type Post struct {
-	ID       uint `gorm:"primaryKey"`
-	Hash     string
-	Creator  *User
-	Content  string
-	CreateAt time.Time
-	UpdateAt time.Time
-	ReplyTo  *Post
-	BelongTo *Topic
-	Assets   []*Asset
+	ID            uint   `gorm:"primaryKey"`
+	Hash          string `gorm:"uniqueIndex"`
+	CreatorWallet string
+	Creator       *User     `gorm:"references:Wallet"`
+	Content       string    `gorm:"not null"`
+	CreateAt      time.Time `gorm:"autoCreateTime,not null"`
+	UpdateAt      time.Time `gorm:"autoUpdateTime,not null"`
+	ReplyTo       *Post     `gorm:"foreignKey:ID"`
+	BelongTo      *Topic    `gorm:"foreignKey:ID"`
+	Assets        []*Asset  `gorm:"foreignKey:CID"`
 }
 
 func (p *Post) MarshalJSON() ([]byte, error) {
