@@ -17,12 +17,20 @@ def main():
     sig = base64.b64encode(priv.sign(cert["cert"].encode())).decode()
 
     res = requests.post(
-        "http://localhost:8080/api/user/create",
+        "http://localhost:8080/api/user/invoke/create",
         headers={"content-type": "application/json", "signature": sig},
         json=cert,
     )
 
-    print(res.text)
+    print(res.json())
+
+    res = requests.post(
+        "http://localhost:8080/auth/login",
+        headers={"content-type": "application/json", "signature": sig},
+        json=cert,
+    )
+
+    print(res.json())
 
 
 if __name__ == "__main__":
