@@ -13,9 +13,10 @@ type Profile struct {
 	Signature      string
 	Credibility    uint
 	Balance        int
-	User           *User    `gorm:"foreignKey:Wallet,constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
-	RolesAssigned  []*Role  `gorm:"foreignKey:ID,constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
-	BadgesReceived []*Badge `gorm:"foreignKey:ID,constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	UserWallet     string
+	User           *User    `gorm:"references:Wallet"`
+	RolesAssigned  []*Role  `gorm:"foreignKey:OwnerID"`
+	BadgesReceived []*Badge `gorm:"foreignKey:OwnerID"`
 }
 
 func (p *Profile) MarshalJSON() ([]byte, error) {
@@ -33,7 +34,7 @@ func (p *Profile) MarshalJSON() ([]byte, error) {
 		Muted     bool   `json:"muted"`
 		Banned    bool   `json:"banned"`
 
-		Balance     int `json:"balance"`
+		Balance     int  `json:"balance"`
 		Credibility uint `json:"credibility"`
 
 		ActiveRole     string          `json:"currentRole"`
@@ -54,15 +55,28 @@ func (p *Profile) MarshalJSON() ([]byte, error) {
 		Balance:     p.Balance,
 		Credibility: p.Credibility,
 
-		ActiveRole: p.User.ActiveRole.Name,
+		ActiveRole: func() string {
+			if p.User.ActiveRole == nil {
+				return ""
+			} else {
+				return p.User.ActiveRole.Name
+			}
+		}(),
+
 		RolesAssigned: utils.Map(p.RolesAssigned, func(r *Role) string {
 			return r.Name
 		}),
 
-		ActiveBadge: &ProfileBadge{
-			p.User.ActiveBadge.Name,
-			p.User.ActiveBadge.CID,
-		},
+		ActiveBadge: func() *ProfileBadge {
+			if p.User.ActiveBadge == nil {
+				return nil
+			} else {
+				return &ProfileBadge{
+					p.User.ActiveBadge.Name,
+					p.User.ActiveBadge.CID,
+				}
+			}
+		}(),
 
 		BadgesReceived: utils.Map(p.BadgesReceived, func(b *Badge) *ProfileBadge {
 			return &ProfileBadge{
@@ -70,20 +84,24 @@ func (p *Profile) MarshalJSON() ([]byte, error) {
 				b.CID,
 			}
 		}),
+
+		CreatedAt: p.User.CreatedAt,
+		UpdatedAt: p.User.UpdatedAt,
 	})
+
 }
 
 type User struct {
-	gorm.Model `json:"-"`
+	gorm.Model
 
-	Username string
-	Wallet   string `gorm:"index,unique"`
+	Username string `gorm:"not null"`
+	Wallet   string `gorm:"index:,unique,not null"`
 	Avatar   string
-	Muted    bool
-	Banned   bool
+	Muted    bool `gorm:"not null"`
+	Banned   bool `gorm:"not null"`
 
-	ActiveBadge *Badge `gorm:"foreignKey:ID"`
-	ActiveRole  *Role  `gorm:"foreignKey:ID"`
+	ActiveBadge *Badge `gorm:"foreignKey:OwnerID"`
+	ActiveRole  *Role  `gorm:"foreignKey:OwnerID"`
 }
 
 func (u *User) MarshalJSON() ([]byte, error) {
@@ -125,12 +143,14 @@ type ProfileBlock struct {
 
 type Role struct {
 	ID          uint   `gorm:"primaryKey" json:"-"`
+	OwnerID     uint   `gorm:"index"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
 }
 
 type Badge struct {
 	ID          uint   `gorm:"primaryKey" json:"-"`
+	OwnerID     uint   `gorm:"index"`
 	CID         string `json:"cid"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
