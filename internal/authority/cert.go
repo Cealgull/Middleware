@@ -26,7 +26,7 @@ type CertAuthority struct {
 }
 
 const (
-	CERTIFICATE = "CERTIFICATE"
+	CERT = "CERTIFICATE"
 )
 
 func NewCertAuthority(logger *zap.Logger, endpoint string) *CertAuthority {
@@ -58,15 +58,7 @@ func (ca *CertAuthority) validateCert(sigb64 string, reqcert CACert) (*x509.Cert
 
 	b, _ := pem.Decode([]byte(reqcert.Cert))
 
-	if b == nil || b.Type != "CERTIFICATE" {
-		return nil, &CertDecodeError{}
-	}
-
-	x509cert, err := x509.ParseCertificate(b.Bytes)
-
-	if err != nil {
-		return nil, &CertDecodeError{}
-	}
+	x509cert, _ := x509.ParseCertificate(b.Bytes)
 
 	ca.logger.Info("Requesting identity", zap.String("Common Name", x509cert.Subject.CommonName))
 
