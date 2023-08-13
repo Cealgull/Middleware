@@ -30,21 +30,6 @@ func (e *CertInternalError) Message() *proto.ResponseMessage {
 	}
 }
 
-func (e *CertDecodeError) Error() string {
-	return "Cert: Certifiate Decode Error. Please verify your input."
-}
-
-func (e *CertDecodeError) Status() int {
-	return http.StatusBadRequest
-}
-
-func (e *CertDecodeError) Message() *proto.ResponseMessage {
-	return &proto.ResponseMessage{
-		Code:    "C1002",
-		Message: e.Error(),
-	}
-}
-
 func (e *CertMissingError) Error() string {
 	return "Cert: Cert Missing Error. Please verify your body."
 }
@@ -54,21 +39,6 @@ func (e *CertMissingError) Status() int {
 }
 
 func (e *CertMissingError) Message() *proto.ResponseMessage {
-	return &proto.ResponseMessage{
-		Code:    "C1003",
-		Message: e.Error(),
-	}
-}
-
-func (e *CertFormatError) Error() string {
-	return "Cert: Certifiate Format Error. Please verify your input."
-}
-
-func (e *CertFormatError) Status() int {
-	return http.StatusBadRequest
-}
-
-func (e *CertFormatError) Message() *proto.ResponseMessage {
 	return &proto.ResponseMessage{
 		Code:    "C1003",
 		Message: e.Error(),
