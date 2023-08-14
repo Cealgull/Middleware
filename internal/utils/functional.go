@@ -1,5 +1,7 @@
 package utils
 
+import "reflect"
+
 func Map[T any, U any](data []T, f func(rune T) U) []U {
 	r := make([]U, len(data))
 	for i, x := range data {
@@ -22,7 +24,7 @@ func Reduce[T any](data []T, f func(x T, y T) T) T {
 	var r T
 	l := len(data)
 	if l == 0 {
-		return r
+    return reflect.Zero(reflect.TypeOf(r)).Interface().(T)
 	} else {
 		r = data[0]
 		for i := 1; i < l; i++ {
