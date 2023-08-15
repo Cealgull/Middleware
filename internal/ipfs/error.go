@@ -6,38 +6,21 @@ import (
 	"github.com/Cealgull/Middleware/internal/proto"
 )
 
-type IPFSBackendError struct{}
+type StorageBackendError struct{}
 
-func (e *IPFSBackendError) Status() int {
-	return http.StatusOK
+func (e *StorageBackendError) Status() int {
+	return http.StatusInternalServerError
 }
 
-func (e *IPFSBackendError) Message() *proto.ResponseMessage {
+func (e *StorageBackendError) Message() *proto.ResponseMessage {
 	return &proto.ResponseMessage{
 		Code:    "I0001",
 		Message: e.Error(),
 	}
 }
 
-func (e *IPFSBackendError) Error() string {
+func (e *StorageBackendError) Error() string {
 	return "IPFS: IPFS Storage Backend Error or Timeout."
-}
-
-type UploadHeaderMissingError struct{}
-
-func (e *UploadHeaderMissingError) Error() string {
-	return "Bad Request: Missing headers in request."
-}
-
-func (e *UploadHeaderMissingError) Status() int {
-	return http.StatusBadRequest
-}
-
-func (e *UploadHeaderMissingError) Message() *proto.ResponseMessage {
-	return &proto.ResponseMessage{
-		Code:    "B0001",
-		Message: e.Error(),
-	}
 }
 
 type UploadFileMissingError struct{}
@@ -57,17 +40,17 @@ func (e *UploadFileMissingError) Message() *proto.ResponseMessage {
 	}
 }
 
-type IPFSFileNotFoundError struct{}
+type StorageFileNotFoundError struct{}
 
-func (e *IPFSFileNotFoundError) Status() int {
+func (e *StorageFileNotFoundError) Status() int {
   return http.StatusNotFound
 }
 
-func (e *IPFSFileNotFoundError) Error() string {
+func (e *StorageFileNotFoundError) Error() string {
   return "Not Found: File not found."
 }
 
-func (e *IPFSFileNotFoundError) Message() *proto.ResponseMessage {
+func (e *StorageFileNotFoundError) Message() *proto.ResponseMessage {
   return &proto.ResponseMessage{
     Code:    "B0003",
     Message: e.Error(),
@@ -76,6 +59,5 @@ func (e *IPFSFileNotFoundError) Message() *proto.ResponseMessage {
 
 
 var success *proto.Success = &proto.Success{}
-var uploadHeaderMissingError *UploadHeaderMissingError = &UploadHeaderMissingError{}
 var uploadFileMissingError *UploadFileMissingError = &UploadFileMissingError{}
-var ipfsBackendError *IPFSBackendError = &IPFSBackendError{}
+var ipfsBackendError *StorageBackendError = &StorageBackendError{}
