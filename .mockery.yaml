@@ -1,0 +1,9 @@
+quiet: False
+packages:
+  github.com/Cealgull/Middleware/internal/ipfs:
+    interfaces:
+      IPFSStorage:
+        config:
+          filename: "mock_{{.InterfaceName}}_test.go"
+          dir: "{{.InterfaceDir}}"
+          with-expecter: true
