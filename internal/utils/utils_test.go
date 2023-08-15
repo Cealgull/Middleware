@@ -19,26 +19,33 @@ func TestReduce(t *testing.T) {
 	add := func(x int, y int) int {
 		return x + y
 	}
-  
-  data := []int{}
-  result := Reduce(data, add)
-  assert.Equal(t, result, 0)
 
-	data = []int{1}
-	result = Reduce(data, add)
-  assert.Equal(t, result, 1)
+	t.Run("Testing Reduce with empty array.", func(t *testing.T) {
+		data := []int{}
+		result := Reduce(data, add)
+		assert.Equal(t, result, 0)
+	})
 
-	data = []int{1, 2, 3, 4}
-	result = Reduce(data, add)
-  assert.Equal(t, result, 10)
+	t.Run("Testing Reduce with single element", func(t *testing.T) {
+		data := []int{1}
+		result := Reduce(data, add)
+		assert.Equal(t, result, 1)
+	})
+
+	t.Run("Testing Reduce with normal elements", func(t *testing.T) {
+		data := []int{1, 2, 3, 4}
+		result := Reduce(data, add)
+		assert.Equal(t, result, 10)
+	})
+
 }
 
 func TestFilter(t *testing.T) {
-  cmp := func(x int) bool {
-    return x <= 5
-  }
-  
-  data := []int{1,2,3,4,5,6,7,8,9}
-  result := Filter(data, cmp)
-  assert.ElementsMatch(t, result, []int{1,2,3,4,5})
+	cmp := func(x int) bool {
+		return x <= 5
+	}
+
+	data := []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
+	result := Filter(data, cmp)
+	assert.ElementsMatch(t, result, []int{1, 2, 3, 4, 5})
 }
