@@ -3,21 +3,38 @@ package offchain
 import (
 	"fmt"
 	"github.com/Cealgull/Middleware/internal/config"
-	"github.com/Cealgull/Middleware/internal/models"
+	. "github.com/Cealgull/Middleware/internal/models"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
-func NewPostgresStore(config *config.PostgresConfig) (*gorm.DB, error) {
+type PostgresOption func(config *postgres.Config) error
 
-	db, err := gorm.Open(postgres.New(
-		postgres.Config{
-			DSN: fmt.Sprintf("host=%s port=%d user=%s dbname=%s",
-				config.Host,
-				config.Port,
-				config.User,
-				config.Name),
-		}), &gorm.Config{
+func WithPostgresDSNConfig(config *config.PostgresDSNConfig) PostgresOption {
+	return func(c *postgres.Config) error {
+		c.DSN = fmt.Sprintf("host=%s port=%d user=%s dbname=%s", config.Host, config.Port, config.User, config.Name)
+		return nil
+	}
+}
+
+func WithPostgresConn(conn gorm.ConnPool) PostgresOption {
+	return func(c *postgres.Config) error {
+		c.Conn = conn
+		return nil
+	}
+}
+
+func NewPostgresDialector(options ...PostgresOption) gorm.Dialector {
+	dialector := postgres.Config{}
+	for _, option := range options {
+		var _ = option(&dialector)
+	}
+	return postgres.New(dialector)
+}
+
+func NewOffchainStore(dialector gorm.Dialector) (*gorm.DB, error) {
+
+	db, err := gorm.Open(dialector, &gorm.Config{
 		FullSaveAssociations: true,
 	})
 
@@ -26,35 +43,16 @@ func NewPostgresStore(config *config.PostgresConfig) (*gorm.DB, error) {
 	}
 
 	if err := db.AutoMigrate(
-		&models.Role{},
-		&models.Badge{},
+		Role{},
+		Badge{},
+		Profile{},
+		Topic{},
+		Asset{},
+		TopicTag{},
+		Post{},
 	); err != nil {
 		return nil, err
 	}
-
-	if err := db.AutoMigrate(&models.User{}); err != nil {
-		return nil, err
-	}
-
-	if err := db.AutoMigrate(&models.Profile{}); err != nil {
-		return nil, err
-	}
-
-  if err := db.AutoMigrate(&models.Topic{}); err != nil {
-    return nil, err
-  }
-
-  if err := db.AutoMigrate(&models.Asset{}); err != nil {
-    return nil, err
-  }
-
-  if err := db.AutoMigrate(&models.TopicTag{}); err != nil {
-    return nil, err
-  }
-
-  if err := db.AutoMigrate(&models.Post{}); err != nil {
-    return nil, err
-  }
 
 	return db, err
 }
