@@ -3,6 +3,7 @@ module github.com/Cealgull/Middleware
 go 1.20
 
 require (
+	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/gorilla/sessions v1.2.1
 	github.com/hyperledger/fabric-gateway v1.3.1
@@ -16,6 +17,7 @@ require (
 	golang.org/x/net v0.13.0
 	google.golang.org/grpc v1.57.0
 	gorm.io/driver/postgres v1.5.2
+	gorm.io/driver/sqlite v1.5.3
 	gorm.io/gorm v1.25.2
 )
 
@@ -46,6 +48,7 @@ require (
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
+	github.com/mattn/go-sqlite3 v1.14.17 // indirect
 	github.com/miekg/pkcs11 v1.1.1 // indirect
 	github.com/minio/sha256-simd v1.0.0 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
