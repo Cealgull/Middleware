@@ -1,3 +1,4 @@
 config.yaml
 cover.out
 mock*.go
+!internal/fabric/common/mocks/mock_Contract.go
