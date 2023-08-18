@@ -19,7 +19,7 @@ type GatewayConfig struct {
 	GatewayPeer  string `yaml:"gatewayPeer"`
 }
 
-type PostgresConfig struct {
+type PostgresDSNConfig struct {
 	Host string `yaml:"host"`
 	Port int    `yaml:"port"`
 	User string `yaml:"user"`
@@ -33,7 +33,7 @@ type MiddlewareConfig struct {
 		URL string `yaml:"url"`
 	} `yaml:"ipfs"`
 	Firefly  FireflyConfig  `yaml:"firefly"`
-	Postgres PostgresConfig `yaml:"postgres"`
+	Postgres PostgresDSNConfig `yaml:"postgres"`
 	Gateway  GatewayConfig  `yaml:"gateway"`
 	Verify   struct {
 		URL string `yaml:"url"`
