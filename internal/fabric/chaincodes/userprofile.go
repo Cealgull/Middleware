@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/Cealgull/Middleware/internal/fabric/common"
 	"github.com/Cealgull/Middleware/internal/models"
 	"github.com/hyperledger/fabric-gateway/pkg/client"
 	"github.com/labstack/echo-contrib/session"
@@ -14,7 +15,7 @@ import (
 )
 
 func invokeCreateUser(logger *zap.Logger) ChaincodeInvoke {
-	return func(contract *client.Contract, c echo.Context) error {
+	return func(contract common.Contract, c echo.Context) error {
 
 		s, _ := session.Get("session", c)
 
@@ -47,7 +48,7 @@ func invokeCreateUser(logger *zap.Logger) ChaincodeInvoke {
 
 func invokeUpdateUser(logger *zap.Logger) ChaincodeInvoke {
 
-	return func(contract *client.Contract, c echo.Context) error {
+	return func(contract common.Contract, c echo.Context) error {
 
 		type ProfileChanged struct {
 			Username  string `json:"username"`
@@ -69,13 +70,9 @@ func invokeUpdateUser(logger *zap.Logger) ChaincodeInvoke {
 
 		profile.Wallet = s.Values["wallet"].(string)
 
-		b, err := json.Marshal(&profile)
+		b, _ := json.Marshal(&profile)
 
-		if err != nil {
-			return err
-		}
-
-		_, err = contract.Submit("UpdateUser", client.WithBytesArguments(b))
+		_, err := contract.Submit("UpdateUser", client.WithBytesArguments(b))
 
 		if err != nil {
 			chaincodeInvokeFailure := ChaincodeInvokeFailureError{"UpdateUser"}
@@ -103,13 +100,13 @@ func createUserCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallback 
 		return db.Transaction(func(tx *gorm.DB) error {
 
 			user := models.User{
-				Username:    block.Username,
-				Wallet:      block.Wallet,
-				Avatar:      block.Avatar,
-				Muted:       block.Muted,
-				Banned:      block.Banned,
-				ActiveRole:  nil,
-				ActiveBadge: nil,
+				Username:            block.Username,
+				Wallet:              block.Wallet,
+				Avatar:              block.Avatar,
+				Muted:               block.Muted,
+				Banned:              block.Banned,
+				ActiveRoleRelation:  nil,
+				ActiveBadgeRelation: nil,
 			}
 
 			profile := models.Profile{
@@ -119,9 +116,8 @@ func createUserCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallback 
 				User:        &user,
 			}
 
-			if err := tx.Create(&profile).Error; err != nil {
-				return err
-			}
+			var _ = tx.Create(&profile).Error
+
 			return nil
 		})
 	}
@@ -160,28 +156,30 @@ func updateUserCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallback 
 				User:        &user,
 			}
 
-			if err := tx.Model(&models.Profile{}).Where("user_wallet = ?", profileChanged.Wallet).Updates(&profile).Error; err != nil {
+			prevProfile := models.Profile{}
+
+			if err := tx.Preload("User").Model(&models.Profile{}).
+				Where("user_wallet = ?", profileChanged.Wallet).First(&prevProfile).Error; err != nil {
 				return err
 			}
 
+			var _ = tx.Model(&prevProfile).Updates(&profile).Error
+
 			if profileChanged.ActiveBadge != 0 {
-				db.
-					Model(&models.User{}).
-					Where("wallet = ?", profileChanged.Wallet).
-					Association("ActiveBadge").
-					Replace(&models.Badge{ID: profileChanged.ActiveBadge})
+				if err := tx.Model(prevProfile.User).Association("ActiveBadgeRelation").
+					Append(&models.BadgeRelation{BadgeID: profileChanged.ActiveBadge}); err != nil {
+					return err
+				}
 			}
 
 			if profileChanged.ActiveRole != 0 {
-				db.
-					Model(&models.User{}).
-					Where("wallet = ?", profileChanged.Wallet).
-					Association("ActiveRole").
-					Replace(&models.Badge{ID: profileChanged.ActiveRole})
+				if err := tx.Model(prevProfile.User).Association("ActiveRoleRelation").
+					Append(&models.RoleRelation{RoleID: profileChanged.ActiveRole}); err != nil {
+					return err
+				}
 			}
 
 			return nil
-
 		})
 	}
 }
@@ -195,8 +193,8 @@ func authLogin(logger *zap.Logger, db *gorm.DB) ChaincodeCustom {
 
 		if err := db.
 			Preload(clause.Associations).
-			Preload("User.ActiveBadge").
-			Preload("User.ActiveRole").
+			Preload("User.ActiveBadgeRelation").
+			Preload("User.ActiveRoleRelation").
 			Where("user_wallet = ?", wallet).
 			First(&profile).Error; err != nil {
 
@@ -213,9 +211,7 @@ func authLogout(logger *zap.Logger, db *gorm.DB) ChaincodeCustom {
 
 		s.Options.MaxAge = -1
 
-		if err := s.Save(c.Request(), c.Response()); err != nil {
-			return c.JSON(chaincodeDeserializationError.Status(), chaincodeDeserializationError.Message())
-		}
+		var _ = s.Save(c.Request(), c.Response())
 
 		return c.JSON(success.Status(), success.Message())
 
@@ -239,10 +235,10 @@ func queryProfile(logger *zap.Logger, db *gorm.DB) ChaincodeQuery {
 
 		if err := db.
 			Preload(clause.Associations).
-			Preload("User.ActiveBadge").
-			Preload("User.ActiveRole").
+			Preload("User.ActiveBadgeRelation").
+			Preload("User.ActiveRoleRelation").
 			Where("user_wallet = ?", profileQuery.Wallet).
-			First(&models.Profile{}).Error; err != nil {
+			First(&profile).Error; err != nil {
 			return c.JSON(chaincodeInternalError.Status(), chaincodeInternalError.Message())
 		}
 
@@ -267,8 +263,8 @@ func queryUser(logger *zap.Logger, db *gorm.DB) ChaincodeQuery {
 
 		if err := db.
 			Preload(clause.Associations).
-			Preload("ActiveBadge").
-			Preload("ActiveRole").
+			Preload("ActiveBadgeRelation").
+			Preload("ActiveRoleRelation").
 			Where("wallet = ?", userQuery.Wallet).
 			First(&user).Error; err != nil {
 			return c.JSON(chaincodeInternalError.Status(), chaincodeInternalError.Message())
@@ -278,14 +274,15 @@ func queryUser(logger *zap.Logger, db *gorm.DB) ChaincodeQuery {
 	}
 }
 
-func NewUserProfileMiddleware(logger *zap.Logger, net *client.Network, db *gorm.DB) *ChaincodeMiddleware {
+func NewUserProfileMiddleware(logger *zap.Logger, net common.Network, db *gorm.DB) *ChaincodeMiddleware {
 
-	return NewChaincodeMiddleware(logger, net, "userprofile",
+	return NewChaincodeMiddleware(logger, net, net.GetContract("userprofile"),
 
 		WithChaincodeHandler("create", "CreateUser", invokeCreateUser(logger), createUserCallback(logger, db)),
 		WithChaincodeHandler("update", "UpdateUser", invokeUpdateUser(logger), updateUserCallback(logger, db)),
+
 		WithChaincodeQuery("profile", queryProfile(logger, db)),
-		WithChaincodeQuery("user", queryUser(logger, db)),
+		WithChaincodeQuery("view", queryUser(logger, db)),
 
 		WithChaincodeCustom("/auth/login", authLogin(logger, db)),
 		WithChaincodeCustom("/auth/logout", authLogin(logger, db)),

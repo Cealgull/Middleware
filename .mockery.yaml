@@ -1,4 +1,5 @@
 quiet: False
+
 packages:
   github.com/Cealgull/Middleware/internal/ipfs:
     interfaces:
@@ -6,4 +7,13 @@ packages:
         config:
           filename: "mock_{{.InterfaceName}}_test.go"
           dir: "{{.InterfaceDir}}"
-          with-expecter: true
+          with-expecter: True
+  github.com/Cealgull/Middleware/internal/fabric/common:
+    config:
+      filename: "mock_{{.InterfaceName}}.go"
+      dir: "{{.InterfaceDir}}/mocks"
+      with-expecter: True
+      unroll-variadic: True
+      outpkg: mocks
+    interfaces:
+      Network:
