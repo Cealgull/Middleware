@@ -15,7 +15,7 @@ func (f *ChaincodeInvokeFailureError) Error() string {
 }
 
 func (f *ChaincodeInvokeFailureError) Status() int {
-	return http.StatusOK
+	return http.StatusInternalServerError
 }
 
 func (f *ChaincodeInvokeFailureError) Message() *proto.ResponseMessage {
