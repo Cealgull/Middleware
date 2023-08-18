@@ -2,10 +2,12 @@ package offchain
 
 import (
 	"fmt"
+
 	"github.com/Cealgull/Middleware/internal/config"
 	. "github.com/Cealgull/Middleware/internal/models"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 type PostgresOption func(config *postgres.Config) error
@@ -36,6 +38,7 @@ func NewOffchainStore(dialector gorm.Dialector) (*gorm.DB, error) {
 
 	db, err := gorm.Open(dialector, &gorm.Config{
 		FullSaveAssociations: true,
+    Logger: logger.Default.LogMode(logger.Info),
 	})
 
 	if err != nil {
@@ -45,6 +48,9 @@ func NewOffchainStore(dialector gorm.Dialector) (*gorm.DB, error) {
 	if err := db.AutoMigrate(
 		Role{},
 		Badge{},
+		RoleRelation{},
+		BadgeRelation{},
+		User{},
 		Profile{},
 		Topic{},
 		Asset{},
