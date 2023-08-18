@@ -1,13 +1,15 @@
 package chaincodes
 
 import (
-	"github.com/hyperledger/fabric-gateway/pkg/client"
+
+  "github.com/Cealgull/Middleware/internal/fabric/common"
+
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
 )
 
-type ChaincodeInvoke func(contract *client.Contract, c echo.Context) error
+type ChaincodeInvoke func(contract common.Contract, c echo.Context) error
 
 type ChaincodeEventCallback func(payload []byte) error
 
@@ -17,8 +19,8 @@ type ChaincodeCustom echo.HandlerFunc
 
 type ChaincodeMiddleware struct {
 	name     string
-	net      *client.Network
-	contract *client.Contract
+	net      common.Network
+	contract common.Contract
 
 	invokes   map[string]ChaincodeInvoke
 	callbacks map[string]ChaincodeEventCallback
@@ -52,11 +54,11 @@ func WithChaincodeCustom(location string, custom ChaincodeCustom) ChaincodeMiddl
   }
 }
 
-func NewChaincodeMiddleware(logger *zap.Logger, net *client.Network, ccName string, options ...ChaincodeMiddlewareOption) *ChaincodeMiddleware {
+func NewChaincodeMiddleware(logger *zap.Logger, net common.Network, contract common.Contract, options ...ChaincodeMiddlewareOption) *ChaincodeMiddleware {
 	cc := ChaincodeMiddleware{
-		name:      ccName,
+		name:      contract.ChaincodeName(),
 		net:       net,
-		contract:  net.GetContract(ccName),
+		contract:  contract,
 		invokes:   make(map[string]ChaincodeInvoke),
 		callbacks: make(map[string]ChaincodeEventCallback),
 		queries:   make(map[string]ChaincodeQuery),
@@ -103,7 +105,9 @@ func (cc *ChaincodeMiddleware) Register(g *echo.Group, e *echo.Echo) {
 }
 
 func (cc *ChaincodeMiddleware) Listen(ctx context.Context) error {
+
 	ch, err := cc.net.ChaincodeEvents(ctx, cc.contract.ChaincodeName())
+
 	if err != nil {
 		return err
 	}
