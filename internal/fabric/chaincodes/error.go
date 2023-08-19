@@ -76,20 +76,20 @@ func (f *ChaincodeBase64DecodeError) Message() *proto.ResponseMessage {
 	}
 }
 
-type ChaincodeFieldValidationFailure struct {
+type ChaincodeFieldValidationError struct {
   field string
 }
 
 
-func (f *ChaincodeFieldValidationFailure) Error() string {
+func (f *ChaincodeFieldValidationError) Error() string {
   return "Chaincode: Failed to validate field " + f.field
 }
 
-func (f *ChaincodeFieldValidationFailure) Status() int {
+func (f *ChaincodeFieldValidationError) Status() int {
   return http.StatusBadRequest
 }
 
-func (f *ChaincodeFieldValidationFailure) Message() *proto.ResponseMessage {
+func (f *ChaincodeFieldValidationError) Message() *proto.ResponseMessage {
   return &proto.ResponseMessage{
     Code:    "C1005",
     Message: f.Error(),
