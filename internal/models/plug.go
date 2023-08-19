@@ -1,0 +1,83 @@
+package models
+
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
+
+type Tag struct {
+	ID          uint   `gorm:"primaryKey" json:"-"`
+	Name        string `gorm:"not null"   json:"name"`
+	CreatorID   uint   `gorm:"not null"`
+	Creator     *User
+	Description string `json:"description"`
+}
+
+type TagRelation struct {
+	ID        uint   `gorm:"primaryKey"`
+	OwnerID   uint   `gorm:"not null"`
+	OwnerType string `gorm:"not null"`
+	TagID     uint   `gorm:"not null"`
+	Tag       *Tag
+}
+
+type Category struct {
+	ID              uint   `gorm:"primaryKey"`
+	CategoryGroupID uint   `gorm:"not null"`
+	Color           uint   `gorm:"not null"`
+	Name            string `gorm:"not null"`
+}
+
+type CategoryRelation struct {
+	ID         uint   `gorm:"primaryKey"`
+  TopicID    uint   `gorm:"not null"`
+	CategoryID uint   `gorm:"not null"`
+	Category   *Category
+	CreatedAt  time.Time      `gorm:"autoCreateTime"`
+	DeletedAt  gorm.DeletedAt `gorm:"index"`
+}
+
+type CategoryGroup struct {
+	ID         uint   `gorm:"primaryKey"`
+	Name       string `gorm:"not null"`
+	Color      uint   `gorm:"not null"`
+	Categories []*Category
+	CreatedAt  time.Time      `gorm:"autoCreateTime"`
+	DeletedAt  gorm.DeletedAt `gorm:"index"`
+}
+
+type Upvote struct {
+	ID        uint           `gorm:"primaryKey"`
+	CreatedAt time.Time      `gorm:"autoCreateTime"`
+	DeletedAt gorm.DeletedAt `gorm:"index"`
+	CreatorID uint           `gorm:"not null"`
+	Creator   *User
+	OwnerID   uint
+	OwnerType string
+}
+
+type Downvote struct {
+	ID        uint           `gorm:"primaryKey"`
+	CreatedAt time.Time      `gorm:"autoCreateTime"`
+	DeletedAt gorm.DeletedAt `gorm:"index"`
+	CreatorID uint           `gorm:"not null"`
+	Creator   *User
+	OwnerID   uint
+	OwnerType string
+}
+
+type EmojiRelation struct {
+	ID        uint `gorm:"primaryKey"`
+	EmojiID   uint `gorm:"not null"`
+	Emoji     *Emoji
+	OwnerID   uint           `gorm:"not null"`
+	OwnerType string         `gorm:"not null"`
+	CreatedAt time.Time      `gorm:"autoCreateTime"`
+	DeletedAt gorm.DeletedAt `gorm:"index"`
+}
+
+type Emoji struct {
+	ID   uint `gorm:"primaryKey"`
+	Code uint `gorm:"not null"`
+}
