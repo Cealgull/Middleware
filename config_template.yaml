@@ -25,3 +25,6 @@ firefly:
     userprofile: userprofile
     topic: topic
     post: post1
+
+verify:
+  url: http://localhost:7999/cert/verify
