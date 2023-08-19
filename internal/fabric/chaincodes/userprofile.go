@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/Cealgull/Middleware/internal/fabric/common"
-	"github.com/Cealgull/Middleware/internal/models"
+	. "github.com/Cealgull/Middleware/internal/models"
 	"github.com/hyperledger/fabric-gateway/pkg/client"
 	"github.com/labstack/echo-contrib/session"
 	"github.com/labstack/echo/v4"
@@ -14,6 +14,7 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+
 func invokeCreateUser(logger *zap.Logger) ChaincodeInvoke {
 	return func(contract common.Contract, c echo.Context) error {
 
@@ -21,7 +22,7 @@ func invokeCreateUser(logger *zap.Logger) ChaincodeInvoke {
 
 		wallet := s.Values["wallet"].(string)
 
-		profile := models.ProfileBlock{
+		profile := ProfileBlock{
 			Username:  "Alice",
 			Wallet:    wallet,
 			Signature: "Alice's signature",
@@ -87,7 +88,7 @@ func invokeUpdateUser(logger *zap.Logger) ChaincodeInvoke {
 func createUserCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallback {
 	return func(payload []byte) error {
 
-		block := models.ProfileBlock{}
+		block := ProfileBlock{}
 
 		if err := json.Unmarshal(payload, &block); err != nil {
 			return err
@@ -99,7 +100,7 @@ func createUserCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallback 
 
 		return db.Transaction(func(tx *gorm.DB) error {
 
-			user := models.User{
+			user := User{
 				Username:            block.Username,
 				Wallet:              block.Wallet,
 				Avatar:              block.Avatar,
@@ -109,7 +110,7 @@ func createUserCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallback 
 				ActiveBadgeRelation: nil,
 			}
 
-			profile := models.Profile{
+			profile := Profile{
 				Signature:   block.Signature,
 				Balance:     block.Balance,
 				Credibility: block.Credibility,
@@ -144,21 +145,21 @@ func updateUserCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallback 
 
 		return db.Transaction(func(tx *gorm.DB) error {
 
-			user := models.User{
+			user := User{
 				Username: profileChanged.Username,
 				Avatar:   profileChanged.Avatar,
 			}
 
-			profile := models.Profile{
+			profile := Profile{
 				Signature:   profileChanged.Signature,
 				Credibility: profileChanged.Credibility,
 				Balance:     profileChanged.Balance,
 				User:        &user,
 			}
 
-			prevProfile := models.Profile{}
+			prevProfile := Profile{}
 
-			if err := tx.Preload("User").Model(&models.Profile{}).
+			if err := tx.Preload("User").Model(&Profile{}).
 				Where("user_wallet = ?", profileChanged.Wallet).First(&prevProfile).Error; err != nil {
 				return err
 			}
@@ -167,14 +168,14 @@ func updateUserCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallback 
 
 			if profileChanged.ActiveBadge != 0 {
 				if err := tx.Model(prevProfile.User).Association("ActiveBadgeRelation").
-					Append(&models.BadgeRelation{BadgeID: profileChanged.ActiveBadge}); err != nil {
+					Append(&BadgeRelation{BadgeID: profileChanged.ActiveBadge}); err != nil {
 					return err
 				}
 			}
 
 			if profileChanged.ActiveRole != 0 {
 				if err := tx.Model(prevProfile.User).Association("ActiveRoleRelation").
-					Append(&models.RoleRelation{RoleID: profileChanged.ActiveRole}); err != nil {
+					Append(&RoleRelation{RoleID: profileChanged.ActiveRole}); err != nil {
 					return err
 				}
 			}
@@ -189,7 +190,7 @@ func authLogin(logger *zap.Logger, db *gorm.DB) ChaincodeCustom {
 		s, _ := session.Get("session", c)
 		wallet := s.Values["wallet"].(string)
 
-		profile := models.Profile{}
+		profile := Profile{}
 
 		if err := db.
 			Preload(clause.Associations).
@@ -231,7 +232,7 @@ func queryProfile(logger *zap.Logger, db *gorm.DB) ChaincodeQuery {
 			return c.JSON(chaincodeDeserializationError.Status(), chaincodeDeserializationError.Message())
 		}
 
-		profile := models.Profile{}
+		profile := Profile{}
 
 		if err := db.
 			Preload(clause.Associations).
@@ -259,7 +260,7 @@ func queryUser(logger *zap.Logger, db *gorm.DB) ChaincodeQuery {
 			return c.JSON(chaincodeInternalError.Status(), chaincodeInternalError.Message())
 		}
 
-		user := models.User{}
+		user := User{}
 
 		if err := db.
 			Preload(clause.Associations).

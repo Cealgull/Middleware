@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	"github.com/Cealgull/Middleware/internal/fabric/common/mocks"
-	"github.com/Cealgull/Middleware/internal/models"
+	. "github.com/Cealgull/Middleware/internal/models"
 	"github.com/hyperledger/fabric-gateway/pkg/client"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
@@ -174,7 +174,7 @@ func TestAuthLogin(t *testing.T) {
 
 		db := newSqliteDB()
 
-		assert.NoError(t, db.Create(&models.Profile{User: &models.User{Wallet: "0x123456789"}}).Error)
+		assert.NoError(t, db.Create(&Profile{User: &User{Wallet: "0x123456789"}}).Error)
 
 		login := authLogin(logger, db)
 
@@ -214,7 +214,7 @@ func randomWallet() string {
 
 func TestCreateUserCallback(t *testing.T) {
 
-	block := models.ProfileBlock{
+	block := ProfileBlock{
 		Username:  "Alice",
 		Wallet:    randomWallet(),
 		Avatar:    "null",
@@ -251,7 +251,7 @@ func TestCreateUserCallback(t *testing.T) {
 	})
 }
 
-var profile = models.ProfileBlock{
+var profile = ProfileBlock{
 	Username:  "Alice",
 	Wallet:    "0x123456789",
 	Avatar:    "null",
@@ -306,8 +306,8 @@ func TestUpdateUserCallback(t *testing.T) {
 	t.Run("Updating user with new active badge and role", func(t *testing.T) {
 
 		db := newSqliteDB()
-		assert.NoError(t, db.Create(&models.Badge{CID: "Qm123456789", Name: "Badge", Description: "Badge Description"}).Error)
-		assert.NoError(t, db.Create(&models.Role{Name: "Normal User", Description: "Normal User", Privilege: 1}).Error)
+		assert.NoError(t, db.Create(&Badge{CID: "Qm123456789", Name: "Badge", Description: "Badge Description"}).Error)
+		assert.NoError(t, db.Create(&Role{Name: "Normal User", Description: "Normal User", Privilege: 1}).Error)
 
 		updateUser := updateUserCallback(logger, db)
 		createUser := createUserCallback(logger, db)
@@ -359,7 +359,7 @@ func TestQueryUser(t *testing.T) {
 		wallet := randomWallet()
 		challenge := UserQuery{Wallet: wallet}
 
-		assert.NoError(t, db.Create(&models.User{Wallet: wallet}).Error)
+		assert.NoError(t, db.Create(&User{Wallet: wallet}).Error)
 
 		query := queryUser(logger, db)
 
@@ -424,7 +424,7 @@ func TestQueryProfile(t *testing.T) {
 		query := queryProfile(logger, db)
 
 		challenge := ProfileQuery{Wallet: wallet}
-		assert.NoError(t, db.Create(&models.Profile{User: &models.User{Wallet: wallet}}).Error)
+		assert.NoError(t, db.Create(&Profile{User: &User{Wallet: wallet}}).Error)
 
 		req := httptest.NewRequest(http.MethodPost, "/api/user/query/profile", newJsonRequest(&challenge))
 		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
