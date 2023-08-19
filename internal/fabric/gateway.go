@@ -128,7 +128,9 @@ func initNetwork(config *config.GatewayConfig) (*client.Network, error) {
 
 func NewGatewayMiddleware(logger *zap.Logger, ipfs *ipfs.IPFSManager, config *config.MiddlewareConfig) (*GatewayMiddleware, error) {
 
-	db, err := offchain.NewPostgresStore(&config.Postgres)
+	dialector := offchain.NewPostgresDialector(offchain.WithPostgresDSNConfig(&config.Postgres))
+
+	db, err := offchain.NewOffchainStore(dialector)
 
 	if err != nil {
 		return nil, err
@@ -141,6 +143,7 @@ func NewGatewayMiddleware(logger *zap.Logger, ipfs *ipfs.IPFSManager, config *co
 	}
 
 	cm := make(map[string]*chaincodes.ChaincodeMiddleware)
+
 	cm["user"] = chaincodes.NewUserProfileMiddleware(logger, network, db)
 	cm["topic"] = chaincodes.NewTopicChaincodeMiddleware(logger, network, ipfs, db)
 
