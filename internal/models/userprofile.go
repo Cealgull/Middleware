@@ -13,7 +13,7 @@ type Profile struct {
 	Signature              string
 	Credibility            uint
 	Balance                int
-	UserWallet             string
+	UserWallet             *string
 	User                   *User            `gorm:"references:Wallet"`
 	RoleRelationsAssigned  []*RoleRelation  `gorm:"polymorphic:Owner"`
 	BadgeRelationsReceived []*BadgeRelation `gorm:"polymorphic:Owner"`

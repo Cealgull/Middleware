@@ -38,7 +38,7 @@ func NewOffchainStore(dialector gorm.Dialector) (*gorm.DB, error) {
 
 	db, err := gorm.Open(dialector, &gorm.Config{
 		FullSaveAssociations: true,
-    Logger: logger.Default.LogMode(logger.Info),
+		Logger:               logger.Default.LogMode(logger.Info),
 	})
 
 	if err != nil {
@@ -46,16 +46,27 @@ func NewOffchainStore(dialector gorm.Dialector) (*gorm.DB, error) {
 	}
 
 	if err := db.AutoMigrate(
+
 		Role{},
 		Badge{},
-		RoleRelation{},
-		BadgeRelation{},
+		Upvote{},
+		Downvote{},
+		Asset{},
+
 		User{},
 		Profile{},
 		Topic{},
-		Asset{},
-		TopicTag{},
 		Post{},
+		Tag{},
+		TagRelation{},
+		OwnedToken{},
+		TradedToken{},
+
+		CategoryGroup{},
+		Category{},
+		CategoryRelation{},
+		RoleRelation{},
+		BadgeRelation{},
 	); err != nil {
 		return nil, err
 	}

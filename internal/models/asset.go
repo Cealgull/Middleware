@@ -12,6 +12,8 @@ type Asset struct {
 	CreatorWallet string
 	Creator       *User  `gorm:"references:Wallet"`
 	ContentType   string `gorm:"not null" json:"contentType"`
+	OwnerID       uint   `gorm:"not null"`
+	OwnerType     string `gorm:"not null"`
 	CID           string `gorm:"uniqueIndex,not null" json:"cid"`
 }
 

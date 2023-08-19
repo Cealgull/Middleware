@@ -3,6 +3,8 @@ package models
 import (
 	"encoding/json"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type PostRequest struct {
@@ -29,11 +31,15 @@ type Post struct {
 	CreatorWallet string
 	Creator       *User     `gorm:"references:Wallet"`
 	Content       string    `gorm:"not null"`
-	CreateAt      time.Time `gorm:"autoCreateTime,not null"`
-	UpdateAt      time.Time `gorm:"autoUpdateTime,not null"`
-	ReplyTo       *Post     `gorm:"foreignKey:ID"`
-	BelongTo      *Topic    `gorm:"foreignKey:ID"`
-	Assets        []*Asset  `gorm:"foreignKey:CID"`
+	CreateAt      time.Time `gorm:"not null"`
+	UpdateAt      time.Time `gorm:"not null"`
+	DeletedAt     gorm.DeletedAt
+	ReplyTo       *Post `gorm:"foreignKey:ID"`
+	BelongToID    uint  `gorm:"not null"`
+	BelongTo      *Topic
+	Upvotes       []*Upvote   `gorm:"polymorphic:Owner"`
+	Downvote      []*Downvote `gorm:"polymorphic:Owner"`
+  Assets        []*Asset    `gorm:"polymorphic:Owner"`
 }
 
 func (p *Post) MarshalJSON() ([]byte, error) {
