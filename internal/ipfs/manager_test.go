@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	. "github.com/Cealgull/Middleware/internal/ipfs/mocks"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -26,7 +27,6 @@ func TestMain(m *testing.M) {
 func newMockIPFSManager(t *testing.T) (*MockIPFSStorage, *IPFSManager) {
 
 	logger, _ := zap.NewProduction()
-
 	s := NewMockIPFSStorage(t)
 	s.EXPECT().Version().Return("0.22.0", "ipfs", nil).Once()
 	mgr, err := NewIPFSManager(logger, WithIPFSStorage(s))
@@ -66,8 +66,8 @@ func TestIPFSPut(t *testing.T) {
 		cid, err := mgr.Put(payload)
 		assert.Equal(t, "", cid)
 		assert.IsType(t, ipfsBackendError, err)
-    var _ = err.Status()
-    var _ = err.Message()
+		var _ = err.Status()
+		var _ = err.Message()
 	})
 
 }
@@ -90,8 +90,8 @@ func TestIPFSCat(t *testing.T) {
 		payload, err := mgr.Cat(cid)
 		assert.Nil(t, payload)
 		assert.IsType(t, &StorageFileNotFoundError{}, err)
-    var _ = err.Status()
-    var _ = err.Message()
+		var _ = err.Status()
+		var _ = err.Message()
 	})
 
 }
