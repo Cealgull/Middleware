@@ -235,27 +235,29 @@ func TestCreateTopicCallback(t *testing.T) {
 
 	createTopic := createTopicCallback(logger, ipfs, db)
 
-	// t.Run("Create Topic Callback With IPFS failure", func(t *testing.T) {
+	t.Run("Create Topic Callback With IPFS failure", func(t *testing.T) {
 
-	// 	storage.EXPECT().Cat(topicBlock.CID).Return(io.ReadCloser(nil), errors.New("hello world")).Once()
-	// 	b, _ := json.Marshal(&topicBlock)
+		storage.EXPECT().Cat(topicBlock.CID).Return(io.ReadCloser(nil), errors.New("hello world")).Once()
+		b, _ := json.Marshal(&topicBlock)
 
-	// 	err := createTopic(b)
-	// 	assert.Error(t, err)
+		err := createTopic(b)
+		assert.Error(t, err)
 
-	// })
+	})
 
 	reader := io.NopCloser(bytes.NewReader([]byte("document")))
 
-	// t.Run("Creating Topic Callback with user not found", func(t *testing.T) {
+	t.Run("Creating Topic Callback with user not found", func(t *testing.T) {
 
-	// 	storage.EXPECT().Cat(topicBlock.CID).Return(reader, nil)
-	// 	topicBlock.Creator = "unknown"
-	// 	b, _ := json.Marshal(&topicBlock)
+		storage.EXPECT().Cat(topicBlock.CID).Return(reader, nil)
+		topicBlock.Creator = "unknown"
+		b, _ := json.Marshal(&topicBlock)
 
-	// 	err := createTopic(b)
-	// 	assert.Error(t, err)
-	// })
+		err := createTopic(b)
+		assert.Error(t, err)
+	})
+
+	reader = io.NopCloser(bytes.NewReader([]byte("document")))
 
 	t.Run("Creating Topic Callback with success", func(t *testing.T) {
 
