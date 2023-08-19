@@ -5,9 +5,10 @@ packages:
     interfaces:
       IPFSStorage:
         config:
-          filename: "mock_{{.InterfaceName}}_test.go"
-          dir: "{{.InterfaceDir}}"
+          filename: "mock_{{.InterfaceName}}.go"
+          dir: "{{.InterfaceDir}}/mocks"
           with-expecter: True
+          outpkg: mocks
   github.com/Cealgull/Middleware/internal/fabric/common:
     config:
       filename: "mock_{{.InterfaceName}}.go"
