@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/base64"
-	"encoding/hex"
 	"encoding/json"
+	"time"
 
+	"github.com/Cealgull/Middleware/internal/fabric/common"
 	"github.com/Cealgull/Middleware/internal/ipfs"
-	"github.com/Cealgull/Middleware/internal/models"
-	"github.com/Cealgull/Middleware/internal/proto"
+	. "github.com/Cealgull/Middleware/internal/models"
 	"github.com/Cealgull/Middleware/internal/utils"
 	"github.com/hyperledger/fabric-gateway/pkg/client"
 	"github.com/labstack/echo-contrib/session"
@@ -18,24 +18,15 @@ import (
 	"gorm.io/gorm"
 )
 
-func validateTags(db *gorm.DB, Tags []uint) proto.MiddlewareError {
-	tags := []models.TopicTag{}
-	if err := db.Find(&tags, Tags).Error; err != nil {
-		chaincodeFieldValidationError := ChaincodeFieldValidationFailure{"Tags"}
-		return &chaincodeFieldValidationError
-	}
-	return nil
-}
-
 func invokeCreateTopic(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) ChaincodeInvoke {
 
-	return func(contract *client.Contract, c echo.Context) error {
+	return func(contract common.Contract, c echo.Context) error {
 
 		type TopicRequest struct {
 			Content  string   `json:"content"`
 			Images   []string `json:"images"`
 			Title    string   `json:"title"`
-			Category string   `json:"category"`
+			Category uint     `json:"category"`
 			Tags     []uint   `json:"tags"`
 		}
 
@@ -48,9 +39,14 @@ func invokeCreateTopic(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) 
 			return c.JSON(chaincodeDeserializationError.Status(), chaincodeDeserializationError.Message())
 		}
 
-		if err := validateTags(db, topicRequest.Tags); err != nil {
+		if err := validate(db, []Tag{}, topicRequest.Tags); err != nil {
 			return c.JSON(err.Status(), err.Message())
 		}
+
+		ts := []byte(time.Now().String())
+		ts = append(ts, []byte(wallet)...)
+
+		hash := base64.StdEncoding.EncodeToString(sha256.New().Sum(append([]byte(topicRequest.Content), ts...)))
 
 		CID, err := ipfs.Put(bytes.NewReader([]byte(topicRequest.Content)))
 
@@ -73,12 +69,13 @@ func invokeCreateTopic(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) 
 			} else {
 				images[i] = cid
 			}
+
 		}
 
-		topicBlock := models.TopicBlock{
+		topicBlock := TopicBlock{
 			Title:    topicRequest.Title,
 			CID:      CID,
-			Hash:     "0x" + hex.EncodeToString(sha256.New().Sum([]byte(topicRequest.Content))),
+			Hash:     hash,
 			Creator:  wallet,
 			Category: topicRequest.Category,
 			Tags:     topicRequest.Tags,
@@ -100,40 +97,42 @@ func createTopicCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB
 
 	return func(payload []byte) error {
 
-		topicBlock := models.TopicBlock{}
+		topicBlock := TopicBlock{}
 
 		var _ = json.Unmarshal(payload, &topicBlock)
 
+		assets := utils.Map(topicBlock.Images, func(image string) *Asset {
+			return &Asset{
+				CreatorWallet: topicBlock.Creator,
+				CID:           image,
+				ContentType:   "image/jpeg",
+			}
+		})
+
+		tagsAssigned := utils.Map(topicBlock.Tags, func(t uint) *TagRelation {
+			return &TagRelation{
+				TagID: t,
+			}
+		})
+
+		data, err := ipfs.Cat(topicBlock.CID)
+
+		if err != nil {
+			return err
+		}
+
+		var _ = assets
+
 		return db.Transaction(func(tx *gorm.DB) error {
 
-			assets := utils.Map(topicBlock.Images, func(image string) *models.Asset {
-				return &models.Asset{
-					CID:         image,
-					ContentType: "image/jpeg",
-				}
-			})
-
-			tags := utils.Map(topicBlock.Tags, func(t uint) *models.TopicTag {
-				return &models.TopicTag{
-					ID:      t,
-					Creator: &models.User{Wallet: topicBlock.Creator},
-				}
-			})
-
-			data, err := ipfs.Cat(topicBlock.CID)
-
-			if err != nil {
-				return err
-			}
-
-			topic := models.Topic{
-				Hash:     topicBlock.Hash,
-				Title:    topicBlock.Title,
-				Content:  string(data),
-				Creator:  &models.User{Wallet: topicBlock.Creator},
-				Category: topicBlock.Category,
-				Tags:     tags,
-				Assets:   assets,
+			topic := Topic{
+				Hash:             topicBlock.Hash,
+				Title:            topicBlock.Title,
+				Content:          string(data),
+				CreatorWallet:    topicBlock.Creator,
+				CategoryAssigned: &CategoryRelation{CategoryID: topicBlock.Category},
+				TagsAssigned:     tagsAssigned,
+				Assets:           assets,
 			}
 
 			if err := tx.Create(&topic).Error; err != nil {
@@ -145,7 +144,9 @@ func createTopicCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB
 	}
 }
 
-func NewTopicChaincodeMiddleware(logger *zap.Logger, net *client.Network, ipfs *ipfs.IPFSManager, db *gorm.DB) *ChaincodeMiddleware {
-	return NewChaincodeMiddleware(logger, net, "topic",
-		WithChaincodeHandler("create", "CreateUser", invokeCreateTopic(logger, ipfs, db), createTopicCallback(logger, ipfs, db)))
+func NewTopicChaincodeMiddleware(logger *zap.Logger, net common.Network, ipfs *ipfs.IPFSManager, db *gorm.DB) *ChaincodeMiddleware {
+	return NewChaincodeMiddleware(logger, net, net.GetContract("topic"),
+
+		WithChaincodeHandler("create", "CreateTopic", invokeCreateTopic(logger, ipfs, db), createTopicCallback(logger, ipfs, db)),
+	)
 }
