@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	"time"
 
 	"gorm.io/gorm"
@@ -30,9 +31,9 @@ type Category struct {
 }
 
 type CategoryRelation struct {
-	ID         uint   `gorm:"primaryKey"`
-  TopicID    uint   `gorm:"not null"`
-	CategoryID uint   `gorm:"not null"`
+	ID         uint `gorm:"primaryKey"`
+	TopicID    uint `gorm:"not null"`
+	CategoryID uint `gorm:"not null"`
 	Category   *Category
 	CreatedAt  time.Time      `gorm:"autoCreateTime"`
 	DeletedAt  gorm.DeletedAt `gorm:"index"`
@@ -81,3 +82,28 @@ type Emoji struct {
 	ID   uint `gorm:"primaryKey"`
 	Code uint `gorm:"not null"`
 }
+
+func (u *Upvote) MarshalJSON() ([]byte, error) {
+
+	return json.Marshal(&struct {
+		Avatar   string `json:"avatar"`
+		Username string `json:"username"`
+	}{
+		Avatar:   u.Creator.Avatar,
+		Username: u.Creator.Username,
+	})
+
+}
+
+func (d *Downvote) MarshalJSON() ([]byte, error) {
+
+	return json.Marshal(&struct {
+		Avatar   string `json:"avatar"`
+		Username string `json:"username"`
+	}{
+		Avatar:   d.Creator.Avatar,
+		Username: d.Creator.Username,
+	})
+
+}
+

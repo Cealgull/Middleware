@@ -38,9 +38,9 @@ func (p *Profile) MarshalJSON() ([]byte, error) {
 		Credibility uint `json:"credibility"`
 		Privilege   uint `json:"privilege"`
 
-		ActiveRole     string          `json:"currentRole"`
+		ActiveRole     string          `json:"activeRole"`
 		RolesAssigned  []string        `json:"rolesAssigned"`
-		ActiveBadge    *ProfileBadge   `json:"currentBadge"`
+		ActiveBadge    *ProfileBadge   `json:"activeBadge"`
 		BadgesReceived []*ProfileBadge `json:"badgesReceived"`
 
 		CreatedAt time.Time `json:"createdAt"`
@@ -116,16 +116,12 @@ func (u *User) MarshalJSON() ([]byte, error) {
 		Username string `json:"username"`
 		Wallet   string `json:"wallet"`
 		Avatar   string `json:"avatar"`
-		Muted    bool   `json:"muted"`
-		Banned   bool   `json:"banned"`
 		Badge    string `json:"badge"`
 		Role     string `json:"role"`
 	}{
 		Username: u.Username,
 		Wallet:   u.Wallet,
 		Avatar:   u.Avatar,
-		Muted:    u.Muted,
-		Banned:   u.Banned,
 		Badge: func(relation *BadgeRelation) string {
 			if relation == nil {
 				return "null"
