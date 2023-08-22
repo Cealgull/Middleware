@@ -21,9 +21,9 @@ type PostBlock struct {
 	CID      string    `json:"cid"`
 	CreateAt time.Time `json:"createAt"`
 	UpdateAt time.Time `json:"updateAt"`
-	ReplyTO  string    `json:"replyTo"`
+	ReplyTo  string    `json:"replyTo"`
 	BelongTo string    `json:"belongTo"`
-	Assets   []*Asset  `json:"assets,omitempty"`
+	Assets   []string  `json:"assets,omitempty"`
 }
 
 type Post struct {
@@ -49,7 +49,7 @@ func (p *Post) MarshalJSON() ([]byte, error) {
 
 	type DisplayReply struct {
 		Creator  *User     `json:"creator"`
-    Hash     string    `json:"hash"`
+		Hash     string    `json:"hash"`
 		Content  string    `json:"content"`
 		UpdateAt time.Time `json:"updateAt"`
 		Assets   []*Asset  `json:"assets,omitempty"`
@@ -75,7 +75,7 @@ func (p *Post) MarshalJSON() ([]byte, error) {
 		CreateAt: p.CreateAt,
 		UpdateAt: p.UpdateAt,
 		ReplyTo: &DisplayReply{
-      Hash: p.ReplyTo.Hash,
+			Hash:     p.ReplyTo.Hash,
 			Creator:  p.ReplyTo.Creator,
 			Content:  p.Content,
 			UpdateAt: p.ReplyTo.UpdateAt,
