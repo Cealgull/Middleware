@@ -15,6 +15,12 @@ type Tag struct {
 	Description string `json:"description"`
 }
 
+type TagBlock struct {
+	Name        string `json:"name"`
+	CreatorID   uint   `json:"creatorID"`
+	Description string `json:"description"`
+}
+
 type TagRelation struct {
 	ID        uint   `gorm:"primaryKey"`
 	OwnerID   uint   `gorm:"not null"`
@@ -28,6 +34,12 @@ type Category struct {
 	CategoryGroupID uint   `gorm:"not null"`
 	Color           uint   `gorm:"not null"`
 	Name            string `gorm:"not null"`
+}
+
+type CategoryBlock struct {
+	CategoryGroupID uint   `json:"categoryGroupID"`
+	Color           uint   `json:"color"`
+	Name            string `json:"name"`
 }
 
 type CategoryRelation struct {
@@ -46,6 +58,13 @@ type CategoryGroup struct {
 	Categories []*Category
 	CreatedAt  time.Time      `gorm:"autoCreateTime"`
 	DeletedAt  gorm.DeletedAt `gorm:"index"`
+}
+
+type CategoryGroupBlock struct {
+	Name       string    `json:"name"`
+	Color      uint      `json:"color"`
+	Categories []uint    `json:"categories"`
+	CreateAt   time.Time `json:"createAt"`
 }
 
 type Upvote struct {
@@ -106,4 +125,3 @@ func (d *Downvote) MarshalJSON() ([]byte, error) {
 	})
 
 }
-
