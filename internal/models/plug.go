@@ -61,10 +61,9 @@ type CategoryGroup struct {
 }
 
 type CategoryGroupBlock struct {
-	Name       string    `json:"name"`
-	Color      uint      `json:"color"`
-	Categories []uint    `json:"categories"`
-	CreateAt   time.Time `json:"createAt"`
+	Name       string `json:"name"`
+	Color      uint   `json:"color"`
+	Categories []uint `json:"categories"`
 }
 
 type Upvote struct {
