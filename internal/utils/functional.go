@@ -24,7 +24,7 @@ func Reduce[T any](data []T, f func(x T, y T) T) T {
 	var r T
 	l := len(data)
 	if l == 0 {
-    return reflect.Zero(reflect.TypeOf(r)).Interface().(T)
+		return reflect.Zero(reflect.TypeOf(r)).Interface().(T)
 	} else {
 		r = data[0]
 		for i := 1; i < l; i++ {
@@ -32,4 +32,13 @@ func Reduce[T any](data []T, f func(x T, y T) T) T {
 		}
 		return r
 	}
+}
+
+func Contains[T comparable](data []T, elem T) bool {
+	for _, x := range data {
+		if x == elem {
+			return true
+		}
+	}
+	return false
 }
