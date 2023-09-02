@@ -49,6 +49,7 @@ func (p *Post) MarshalJSON() ([]byte, error) {
 
 	type DisplayReply struct {
 		Creator  *User     `json:"creator"`
+    Hash     string    `json:"hash"`
 		Content  string    `json:"content"`
 		UpdateAt time.Time `json:"updateAt"`
 		Assets   []*Asset  `json:"assets,omitempty"`
@@ -74,6 +75,7 @@ func (p *Post) MarshalJSON() ([]byte, error) {
 		CreateAt: p.CreateAt,
 		UpdateAt: p.UpdateAt,
 		ReplyTo: &DisplayReply{
+      Hash: p.ReplyTo.Hash,
 			Creator:  p.ReplyTo.Creator,
 			Content:  p.Content,
 			UpdateAt: p.ReplyTo.UpdateAt,
