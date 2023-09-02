@@ -2,10 +2,12 @@ package chaincodes
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/Cealgull/Middleware/internal/fabric/common"
 	. "github.com/Cealgull/Middleware/internal/models"
+	"github.com/Cealgull/Middleware/internal/utils"
 	"github.com/hyperledger/fabric-gateway/pkg/client"
 	"github.com/labstack/echo-contrib/session"
 	"github.com/labstack/echo/v4"
@@ -13,7 +15,6 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
-
 
 func invokeCreateUser(logger *zap.Logger) ChaincodeInvoke {
 	return func(contract common.Contract, c echo.Context) error {
@@ -47,13 +48,13 @@ func invokeCreateUser(logger *zap.Logger) ChaincodeInvoke {
 	}
 }
 
-func invokeUpdateUser(logger *zap.Logger) ChaincodeInvoke {
+func invokeUpdateUser(logger *zap.Logger, db *gorm.DB) ChaincodeInvoke {
 
 	return func(contract common.Contract, c echo.Context) error {
 
 		type ProfileChanged struct {
 			Username  string `json:"username"`
-			Wallet    string `json:"wallet"`
+			Wallet    string `json:"-"`
 			Avatar    string `json:"avatar"`
 			Signature string `json:"signature"`
 
@@ -71,9 +72,28 @@ func invokeUpdateUser(logger *zap.Logger) ChaincodeInvoke {
 
 		profile.Wallet = s.Values["wallet"].(string)
 
+		err := db.Transaction(func(tx *gorm.DB) error {
+			var userProfile Profile
+			if err := tx.Model(&Profile{}).
+				Preload("RoleRelationsAssigned").
+				Preload("BadgeRelationsReceived").
+				Where("user_wallet = ?", profile.Wallet).
+				First(&userProfile).Error; err != nil {
+				return err
+			}
+			if !utils.Contains(utils.Map(userProfile.RoleRelationsAssigned, func(r *RoleRelation) uint {
+				return r.RoleID
+			}), profile.ActiveRole) || !utils.Contains(utils.Map(userProfile.BadgeRelationsReceived, func(r *BadgeRelation) uint {
+        return r.BadgeID
+      }), profile.ActiveBadge) {
+				return errors.New("User does not have the role or badge")
+			}
+			return nil
+		})
+
 		b, _ := json.Marshal(&profile)
 
-		_, err := contract.Submit("UpdateUser", client.WithBytesArguments(b))
+		_, err = contract.Submit("UpdateUser", client.WithBytesArguments(b))
 
 		if err != nil {
 			chaincodeInvokeFailure := ChaincodeInvokeFailureError{"UpdateUser"}
@@ -280,7 +300,7 @@ func NewUserProfileMiddleware(logger *zap.Logger, net common.Network, db *gorm.D
 	return NewChaincodeMiddleware(logger, net, net.GetContract("userprofile"),
 
 		WithChaincodeHandler("create", "CreateUser", invokeCreateUser(logger), createUserCallback(logger, db)),
-		WithChaincodeHandler("update", "UpdateUser", invokeUpdateUser(logger), updateUserCallback(logger, db)),
+		WithChaincodeHandler("update", "UpdateUser", invokeUpdateUser(logger, db), updateUserCallback(logger, db)),
 
 		WithChaincodeQuery("profile", queryProfile(logger, db)),
 		WithChaincodeQuery("view", queryUser(logger, db)),
