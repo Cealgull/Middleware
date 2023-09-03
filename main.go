@@ -34,8 +34,8 @@ func main() {
 		logger.Panic(err.Error())
 	}
 
-	ipfs, _ := ipfs.NewIPFSManager(logger, ipfs.WithUrl(config.Ipfs.URL))
-	ca := authority.NewCertAuthority(logger, config.Verify.URL)
+	ipfs, _ := ipfs.NewIPFSManager(logger, ipfs.WithUrl(config.IPFS.Host, config.IPFS.Port))
+	ca := authority.NewCertAuthority(logger, config.Verify.Host, config.Verify.Port)
 
 	fab, err := fabric.NewGatewayMiddleware(logger, ipfs, &config)
 
