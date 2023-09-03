@@ -40,8 +40,9 @@ func TestNewIPFSManager(t *testing.T) {
 	var err error
 
 	logger, _ := zap.NewProduction()
-	testurl := "localhost:5001"
-	mgr, err := NewIPFSManager(logger, WithUrl(testurl))
+	testurl := "localhost"
+  testport := 5001
+	mgr, err := NewIPFSManager(logger, WithUrl(testurl, testport))
 	assert.Nil(t, mgr)
 	assert.Error(t, err)
 

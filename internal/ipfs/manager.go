@@ -1,6 +1,7 @@
 package ipfs
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/Cealgull/Middleware/internal/proto"
@@ -29,9 +30,9 @@ func WithIPFSStorage(storage IPFSStorage) IPFSManagerOption {
 	}
 }
 
-func WithUrl(url string) IPFSManagerOption {
+func WithUrl(url string, port int) IPFSManagerOption {
 	return func(mgr *IPFSManager) error {
-		sh := ipfs.NewShell(url)
+    sh := ipfs.NewShell(fmt.Sprintf("%s:%d", url, port))
 		mgr.storage = sh
 		return nil
 	}
