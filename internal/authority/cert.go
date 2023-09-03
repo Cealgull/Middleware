@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/pem"
+	"fmt"
 	"net/http"
 
 	"github.com/Cealgull/Middleware/internal/proto"
@@ -29,7 +30,10 @@ const (
 	CERT = "CERTIFICATE"
 )
 
-func NewCertAuthority(logger *zap.Logger, endpoint string) *CertAuthority {
+func NewCertAuthority(logger *zap.Logger, host string, port int) *CertAuthority {
+
+  endpoint := fmt.Sprintf("http://%s:%d/cert/verify", host, port)
+
 	ca := &CertAuthority{
 		client:   resty.New(),
 		logger:   logger,

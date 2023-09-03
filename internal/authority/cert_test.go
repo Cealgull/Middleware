@@ -19,7 +19,8 @@ import (
 var ca *CertAuthority
 var server *echo.Echo
 
-const ENDPOINT = "http://api.cealgull.verify/cert/verify"
+const HOST = "api.cealgull.verify"
+const PORT = 80
 
 func generateCert(t *testing.T) (string, string) {
 	pub, priv, _ := ed25519.GenerateKey(nil)
@@ -62,7 +63,7 @@ func TestValidateCertInternalError(t *testing.T) {
 
 func TestValidateCertUnauthorized(t *testing.T) {
 
-	httpmock.RegisterResponder("POST", ENDPOINT,
+	httpmock.RegisterResponder("POST", ca.endpoint,
 		httpmock.NewStringResponder(500, "verification error"))
 
 	defer httpmock.Reset()
@@ -79,7 +80,7 @@ func TestValidateCertUnauthorized(t *testing.T) {
 
 func TestValidateCertNoExternal(t *testing.T) {
 
-	httpmock.RegisterResponder("POST", ENDPOINT,
+	httpmock.RegisterResponder("POST", ca.endpoint,
 		httpmock.NewStringResponder(200, "OK"))
 
 	defer httpmock.Reset()
@@ -112,7 +113,7 @@ func TestValidateCertNoExternal(t *testing.T) {
 func TestMain(m *testing.M) {
 
 	logger, _ := zap.NewProduction()
-	ca = NewCertAuthority(logger, ENDPOINT)
+	ca = NewCertAuthority(logger, HOST, PORT)
 	httpmock.ActivateNonDefault(ca.client.GetClient())
   server = echo.New()
   ca.Register(server)

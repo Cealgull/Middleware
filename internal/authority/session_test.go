@@ -42,7 +42,7 @@ func methodOKhandler(c echo.Context) error {
 
 func TestValidateSession(t *testing.T) {
 
-	httpmock.RegisterResponder("POST", ENDPOINT, httpmock.NewStringResponder(200, `"OK`))
+	httpmock.RegisterResponder("POST", ca.endpoint, httpmock.NewStringResponder(200, `"OK`))
 	defer httpmock.Reset()
 
 	s := session.Middleware(sessions.NewCookieStore([]byte("secret")))
