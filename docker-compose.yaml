@@ -1,26 +1,24 @@
 version: "3.9"
-
 services:
-  middleware:
-    build: .
-    ports:
-      - 8080:8080
-    volumes:
-      - ./config.yaml:/etc/cealgull-middleware/config.yaml:ro
-    networks:
-      - fabric
-
   postgres:
     image: postgres
     environment:
       - POSTGRES_HOST_AUTH_METHOD=trust
       - POSTGRES_USER=cealgull
       - POSTGRES_DB=cealgull
-    networks:
-      - fabric
     hostname: "db.cealgull.middleware"
 
-networks:
-  fabric:
-    name: fabric_test
-    external: true
+  ipfs:
+    image: ipfs/kubo
+    hostname: "ipfs.cealgull.middleware"
+
+  gateway:
+    build: .
+    ports:
+      - 8080:8080
+    volumes:
+      - ./configs/config.yaml:/etc/cealgull-middleware/config.yaml:ro
+      - /home/toolmanp/projects/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/users:/etc/cealgull-middleware/crypto
+    depends_on:
+      - postgres
+      - ipfs
