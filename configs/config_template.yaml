@@ -1,0 +1,24 @@
+host: 0.0.0.0
+port: 8080
+
+ipfs:
+  host: ipfs.cealgull.middleware
+  port: 5001
+
+gateway:
+  channel: mychannel
+  mspID: Org1MSP
+  cryptoPath: /etc/cealgull-middleware/crypto
+  user: User1@org1.example.com
+  peerEndpoint: 172.17.0.1:7051
+  peerGateway: peer0.org1.example.com
+
+postgres:
+  host: db.cealgull.middleware
+  port: 5432
+  name: cealgull
+  user: cealgull
+
+verify:
+  host: 172.17.0.1
+  port: 1000
