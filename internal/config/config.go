@@ -1,15 +1,5 @@
 package config
 
-type FireflyConfig struct {
-	Urls      []string `yaml:"urls"`
-	ApiPrefix string   `yaml:"apiPrefix"`
-	ApiName   struct {
-		Userprofile string `yaml:"userprofile"`
-		Topic       string `yaml:"topic"`
-		Post        string `yaml:"post"`
-	} `yaml:"apiName"`
-}
-
 type GatewayConfig struct {
 	MspID        string `yaml:"mspID"`
 	Channel      string `yaml:"channel"`
@@ -26,16 +16,21 @@ type PostgresDSNConfig struct {
 	Name string `yaml:"name"`
 }
 
-type MiddlewareConfig struct {
-	Host string `yaml:"string"`
+type IPFSConfig struct {
+	Host string `yaml:"host"`
 	Port int    `yaml:"port"`
-	Ipfs struct {
-		URL string `yaml:"url"`
-	} `yaml:"ipfs"`
-	Firefly  FireflyConfig  `yaml:"firefly"`
+}
+
+type VerifyConfig struct {
+	Host string `yaml:"host"`
+	Port int    `yaml:"port"`
+}
+
+type MiddlewareConfig struct {
+	Host     string            `yaml:"host"`
+	Port     int               `yaml:"port"`
+	IPFS     IPFSConfig        `yaml:"ipfs"`
 	Postgres PostgresDSNConfig `yaml:"postgres"`
-	Gateway  GatewayConfig  `yaml:"gateway"`
-	Verify   struct {
-		URL string `yaml:"url"`
-	} `yaml:"verify"`
+	Gateway  GatewayConfig     `yaml:"gateway"`
+	Verify   VerifyConfig      `yaml:"verify"`
 }
