@@ -144,9 +144,107 @@ func createTopicCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB
 	}
 }
 
+func invokeUpdateTopic(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) ChaincodeInvoke {
+	return func(contract common.Contract, c echo.Context) error {
+		type ChangeTopicRequest struct {
+			Hash    string   `json:"hash"`
+			Content string   `json:"content"`
+			Assets  []string `json:"assets"`
+			Type    string   `json:"type"`
+		}
+
+		topicRequest := ChangeTopicRequest{}
+		if err := c.Bind(&topicRequest); err != nil {
+			return c.JSON(chaincodeDeserializationError.Status(), chaincodeDeserializationError.Message())
+		}
+
+		topic := Topic{}
+		if err := db.Model(&Topic{}).
+			Where("hash = ?", topicRequest.Hash).First(&topic).Error; err != nil {
+			return err
+		}
+
+		CID, err := ipfs.Put(bytes.NewReader([]byte(topicRequest.Content)))
+
+		if err != nil {
+			return c.JSON(err.Status(), err.Message())
+		}
+
+		images := make([]string, len(topicRequest.Assets))
+
+		for i, imageb64 := range topicRequest.Assets {
+
+			data, err := base64.StdEncoding.DecodeString(imageb64)
+
+			if err != nil {
+				return c.JSON(chaincodeBase64DecodeError.Status(), chaincodeBase64DecodeError.Message())
+			}
+
+			if cid, err := ipfs.Put(bytes.NewReader(data)); err != nil {
+				return c.JSON(err.Status(), err.Message())
+			} else {
+				images[i] = cid
+			}
+		}
+
+		topicBlock := TopicBlock{
+			Hash:   topicRequest.Hash,
+			CID:    CID,
+			Images: images,
+		}
+
+		b, _ := json.Marshal(&topicBlock)
+
+		if _, err := contract.Submit("UpdateTopic", client.WithBytesArguments(b)); err != nil {
+			chaincodeInvokeFailure := ChaincodeInvokeFailureError{"UpdateTopic"}
+			return c.JSON(chaincodeInvokeFailure.Status(), chaincodeInvokeFailure.Message())
+		}
+
+		return c.JSON(success.Status(), success.Message())
+
+	}
+}
+
+func updateTopicCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) ChaincodeEventCallback {
+
+	return func(payload []byte) error {
+		topicChanged := TopicBlock{}
+
+		var _ = json.Unmarshal(payload, &topicChanged)
+
+		topic := Topic{}
+		if err := db.Model(&Topic{}).
+			Where("hash = ?", topicChanged.Hash).First(&topic).Error; err != nil {
+			return err
+		}
+
+		data, err := ipfs.Cat(topicChanged.CID)
+		if err != nil {
+			return err
+		}
+
+		images := utils.Map(topicChanged.Images, func(image string) *Asset {
+			return &Asset{
+				CreatorWallet: topic.CreatorWallet,
+				CID:           image,
+				ContentType:   "image/jpeg",
+			}
+		})
+
+		var _ = images
+
+		return db.Transaction(func(tx *gorm.DB) error {
+			tx.Model(&topic).Select("content", "update_at", "images").Updates(map[string]interface{}{"content": string(data), "images": images})
+
+			return nil
+		})
+	}
+}
+
 func NewTopicChaincodeMiddleware(logger *zap.Logger, net common.Network, ipfs *ipfs.IPFSManager, db *gorm.DB) *ChaincodeMiddleware {
 	return NewChaincodeMiddleware(logger, net, net.GetContract("topic"),
 
 		WithChaincodeHandler("create", "CreateTopic", invokeCreateTopic(logger, ipfs, db), createTopicCallback(logger, ipfs, db)),
+		WithChaincodeHandler("update", "UpdateTopic", invokeUpdateTopic(logger, ipfs, db), updateTopicCallback(logger, ipfs, db)),
 	)
 }
