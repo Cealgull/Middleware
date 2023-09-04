@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
-	"strconv"
 	"time"
 
 	"github.com/Cealgull/Middleware/internal/fabric/common"
@@ -38,12 +37,15 @@ func invokeCreatePost(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) C
 			return c.JSON(chaincodeDeserializationError.Status(), chaincodeDeserializationError.Message())
 		}
 
-		if _, err := strconv.Atoi(postRequest.BelongTo); err != nil {
-			return c.JSON(chaincodeDeserializationError.Status(), chaincodeDeserializationError.Message())
+		replyPost := Post{}
+		if err := db.Model(&Post{}).
+			Where("hash = ?", postRequest.ReplyTo).First(&replyPost).Error; err != nil {
+			return err
 		}
-
-		if _, err := strconv.Atoi(postRequest.ReplyTo); err != nil {
-			return c.JSON(chaincodeDeserializationError.Status(), chaincodeDeserializationError.Message())
+		belongTopic := Topic{}
+		if err := db.Model(&Topic{}).
+			Where("hash = ?", postRequest.BelongTo).First(&belongTopic).Error; err != nil {
+			return err
 		}
 
 		ts := []byte(time.Now().String())
@@ -105,6 +107,17 @@ func createPostCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB)
 
 		var _ = json.Unmarshal(payload, &postBlock)
 
+		replyPost := Post{}
+		if err := db.Model(&Post{}).
+			Where("hash = ?", postBlock.ReplyTo).First(&replyPost).Error; err != nil {
+			return err
+		}
+		belongTopic := Topic{}
+		if err := db.Model(&Topic{}).
+			Where("hash = ?", postBlock.BelongTo).First(&belongTopic).Error; err != nil {
+			return err
+		}
+
 		assets := utils.Map(postBlock.Assets, func(image string) *Asset {
 			return &Asset{
 				CreatorWallet: postBlock.Creator,
@@ -121,8 +134,6 @@ func createPostCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB)
 
 		var _ = assets
 
-		belongToID, _ := strconv.Atoi(postBlock.BelongTo)
-
 		return db.Transaction(func(tx *gorm.DB) error {
 
 			post := Post{
@@ -131,9 +142,10 @@ func createPostCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB)
 				Content:       string(data),
 				CreateAt:      postBlock.CreateAt,
 				UpdateAt:      postBlock.UpdateAt,
-				// ReplyTo:
-				BelongToID: uint(belongToID),
-				Assets:     assets,
+
+				BelongTo: &belongTopic,
+				ReplyTo:  &replyPost,
+				Assets:   assets,
 			}
 
 			if err := tx.Create(&post).Error; err != nil {
@@ -157,6 +169,12 @@ func invokeUpdatePost(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) C
 		postRequest := ChangePostRequest{}
 		if err := c.Bind(&postRequest); err != nil {
 			return c.JSON(chaincodeDeserializationError.Status(), chaincodeDeserializationError.Message())
+		}
+
+		post := Post{}
+		if err := db.Model(&Post{}).
+			Where("hash = ?", postRequest.Hash).First(&post).Error; err != nil {
+			return err
 		}
 
 		CID, err := ipfs.Put(bytes.NewReader([]byte(postRequest.Content)))

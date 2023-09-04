@@ -32,21 +32,30 @@ func preparePostData(t *testing.T) *gorm.DB {
 
 	topic := &Topic{
 		Title:   "Hello world",
+		Hash:    "topic",
 		Creator: user,
 	}
 
-	post := &Post{
-		Hash:     "aaaa",
-		Content:  "Hello world!",
-		Creator:  user,
-		BelongTo: topic,
+	posts := []*Post{
+		{
+			Hash:     "post1",
+			Content:  "Hello world!",
+			Creator:  user,
+			BelongTo: topic,
+		},
+		{
+			Hash:     "post2",
+			Content:  "Hello world!",
+			Creator:  user,
+			BelongTo: topic,
+		},
 	}
 
 	db := newSqliteDB()
 
 	assert.NoError(t, db.Create(&user).Error)
 	assert.NoError(t, db.Create(&topic).Error)
-	assert.NoError(t, db.Create(&post).Error)
+	assert.NoError(t, db.Create(&posts).Error)
 
 	return db
 }
@@ -63,8 +72,8 @@ func TestInvokeCreatePost(t *testing.T) {
 	payload := PostRequest{
 		Content:  "Hello world",
 		Images:   []string{},
-		ReplyTo:  "1",
-		BelongTo: "1",
+		ReplyTo:  "post2",
+		BelongTo: "topic",
 	}
 
 	storage := ipfsmock.NewMockIPFSStorage(t)
@@ -104,10 +113,9 @@ func TestInvokeCreatePost(t *testing.T) {
 
 		err := createPost(contract, c)
 
-		assert.NoError(t, err)
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
+		assert.Error(t, err)
 
-		payload.BelongTo = "1"
+		payload.BelongTo = "topic"
 	})
 
 	t.Run("Creating Post With ReplyTo Error", func(t *testing.T) {
@@ -122,10 +130,9 @@ func TestInvokeCreatePost(t *testing.T) {
 
 		err := createPost(contract, c)
 
-		assert.NoError(t, err)
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
+		assert.Error(t, err)
 
-		payload.ReplyTo = "1"
+		payload.ReplyTo = "post2"
 	})
 
 	t.Run("Creating Post With IPFS Failure", func(t *testing.T) {
@@ -228,8 +235,8 @@ func TestCreatePostCallback(t *testing.T) {
 		CID:      "abcd",
 		Hash:     "abcd",
 		Creator:  "0x123456789",
-		ReplyTo:  "1",
-		BelongTo: "1",
+		ReplyTo:  "post2",
+		BelongTo: "topic",
 		Assets:   []string{"abcd"},
 	}
 
@@ -254,6 +261,28 @@ func TestCreatePostCallback(t *testing.T) {
 
 	reader := io.NopCloser(bytes.NewReader([]byte("document")))
 
+	t.Run("Creating Post Callback with replyTo error", func(t *testing.T) {
+
+		storage.EXPECT().Cat(postBlock.CID).Return(reader, nil)
+		postBlock.ReplyTo = "unknown"
+		b, _ := json.Marshal(&postBlock)
+
+		err := createPost(b)
+		assert.Error(t, err)
+		postBlock.ReplyTo = "post2"
+	})
+
+	t.Run("Creating Post Callback with belongTo error", func(t *testing.T) {
+
+		storage.EXPECT().Cat(postBlock.CID).Return(reader, nil)
+		postBlock.BelongTo = "unknown"
+		b, _ := json.Marshal(&postBlock)
+
+		err := createPost(b)
+		assert.Error(t, err)
+		postBlock.BelongTo = "topic"
+	})
+
 	t.Run("Creating Post Callback with user not found", func(t *testing.T) {
 
 		storage.EXPECT().Cat(postBlock.CID).Return(reader, nil)
@@ -262,15 +291,12 @@ func TestCreatePostCallback(t *testing.T) {
 
 		err := createPost(b)
 		assert.Error(t, err)
+		postBlock.Creator = "0x123456789"
 	})
-
-	reader = io.NopCloser(bytes.NewReader([]byte("document")))
 
 	t.Run("Creating Post Callback with success", func(t *testing.T) {
 
 		storage.EXPECT().Cat(postBlock.CID).Return(reader, nil)
-		postBlock.Creator = "0x123456789"
-
 		b, _ := json.Marshal(&postBlock)
 
 		err := createPost(b)
@@ -288,7 +314,7 @@ func TestInvokeUpdatePost(t *testing.T) {
 	}
 
 	payload := UpdatePostRequest{
-		Hash:    "abcd",
+		Hash:    "post1",
 		Content: "Hello world",
 		Images:  []string{},
 		Type:    "post",
@@ -316,6 +342,21 @@ func TestInvokeUpdatePost(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+
+	t.Run("Updating Post With Hash Error", func(t *testing.T) {
+		payload.Hash = "a111"
+		req := httptest.NewRequest(http.MethodPost, "/api/post/invoke/UpdatePost", newJsonRequest(&payload))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		err := updatePost(contract, c)
+
+		assert.Error(t, err)
+		payload.Hash = "post1"
 	})
 
 	t.Run("Updating Post With IPFS Failure", func(t *testing.T) {
@@ -417,10 +458,10 @@ func TestUpdatePostCallback(t *testing.T) {
 
 	postBlock := PostBlock{
 		CID:      "defg",
-		Hash:     "aaaa",
+		Hash:     "post1",
 		Creator:  "0x123456789",
-		ReplyTo:  "1",
-		BelongTo: "1",
+		ReplyTo:  "post2",
+		BelongTo: "topic",
 		Assets:   []string{"abcd"},
 	}
 
