@@ -76,7 +76,9 @@ func TestInvokeUpdateUser(t *testing.T) {
 	}
 
 	contract := mocks.NewMockContract()
-	u := invokeUpdateUser(logger)
+
+	db := newSqliteDB()
+	u := invokeUpdateUser(logger, db)
 
 	profileChanged := ProfileChanged{
 		Username:    "Alice",
