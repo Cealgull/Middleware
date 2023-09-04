@@ -271,6 +271,184 @@ func TestCreatePostCallback(t *testing.T) {
 
 }
 
+func TestInvokeUpdatePost(t *testing.T) {
+	type UpdatePostRequest struct {
+		Hash    string   `json:"hash"`
+		Content string   `json:"content"`
+		Images  []string `json:"assets"`
+		Type    string   `json:"type"`
+	}
+
+	payload := UpdatePostRequest{
+		Hash:    "abcd",
+		Content: "Hello world",
+		Images:  []string{},
+		Type:    "post",
+	}
+
+	storage := ipfsmock.NewMockIPFSStorage(t)
+	storage.EXPECT().Version().Return("abcd", "abcd", nil).Once()
+
+	ipfs := NewMockIPFSManager(storage)
+
+	contract := fabricmock.NewMockContract()
+
+	db := preparePostData(t)
+
+	updatePost := invokeUpdatePost(logger, ipfs, db)
+	t.Run("Updating Post With Unmarshal Error", func(t *testing.T) {
+
+		req := httptest.NewRequest(http.MethodPost, "/api/post/invoke/UpdatePost", bytes.NewReader([]byte{1, 2, 3}))
+		rec := httptest.NewRecorder()
+
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		err := updatePost(contract, c)
+
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+
+	t.Run("Updating Post With IPFS Failure", func(t *testing.T) {
+
+		storage.On("Add", mock.Anything).Return("", errors.New("hello world")).Once()
+
+		req := httptest.NewRequest(http.MethodPost, "/api/post/invoke/UpdatePost", newJsonRequest(&payload))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		err := updatePost(contract, c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+
+	})
+
+	t.Run("Updating Post With Base64DecodeError", func(t *testing.T) {
+
+		payload.Images = []string{"base64Error&*"}
+		storage.On("Add", mock.Anything).Return("base64", nil).Once()
+
+		req := httptest.NewRequest(http.MethodPost, "/api/post/invoke/UpdatePost", newJsonRequest(&payload))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		err := updatePost(contract, c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+
+	})
+
+	t.Run("Updating Post With IPFS Error on Uploading Images", func(t *testing.T) {
+
+		payload.Images = []string{base64.StdEncoding.EncodeToString([]byte("base64Error&*"))}
+
+		storage.On("Add", mock.Anything).Return("base64", nil).Once()
+		storage.On("Add", mock.Anything).Return("", errors.New("Hello world")).Once()
+
+		req := httptest.NewRequest(http.MethodPost, "/api/post/invoke/UpdatePost", newJsonRequest(&payload))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		err := updatePost(contract, c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	})
+
+	t.Run("Updating Post With Chaincode Network Failure", func(t *testing.T) {
+
+		payload.Images = []string{base64.StdEncoding.EncodeToString([]byte("base64Error&*"))}
+
+		storage.On("Add", mock.Anything).Return("base64", nil)
+
+		req := httptest.NewRequest(http.MethodPost, "/api/post/invoke/UpdatePost", newJsonRequest(&payload))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		contract.On("Submit", "UpdatePost", mock.Anything).Return([]byte(nil), errors.New("Hello world")).Once()
+		err := updatePost(contract, c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+
+	})
+
+	t.Run("Updating Post With Success", func(t *testing.T) {
+
+		payload.Images = []string{base64.StdEncoding.EncodeToString([]byte("base64Error&*"))}
+
+		storage.On("Add", mock.Anything).Return("base64", nil)
+
+		req := httptest.NewRequest(http.MethodPost, "/api/post/invoke/UpdatePost", newJsonRequest(&payload))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		contract.On("Submit", "UpdatePost", mock.Anything).Return([]byte(nil), nil).Once()
+		err := updatePost(contract, c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+
+}
+
+func TestUpdatePostCallback(t *testing.T) {
+
+	postBlock := PostBlock{
+		CID:      "abcd",
+		Hash:     "abcd",
+		Creator:  "0x123456789",
+		ReplyTo:  "1",
+		BelongTo: "1",
+		Assets:   []string{"abcd"},
+	}
+
+	storage := ipfsmock.NewMockIPFSStorage(t)
+	storage.EXPECT().Version().Return("abcd", "abcd", nil).Once()
+
+	ipfs := NewMockIPFSManager(storage)
+
+	db := preparePostData(t)
+
+	updatePost := updatePostCallback(logger, ipfs, db)
+
+	t.Run("Update Post Callback With IPFS failure", func(t *testing.T) {
+
+		storage.EXPECT().Cat(postBlock.CID).Return(io.ReadCloser(nil), errors.New("hello world")).Once()
+		b, _ := json.Marshal(&postBlock)
+
+		err := updatePost(b)
+		assert.Error(t, err)
+
+	})
+
+	reader := io.NopCloser(bytes.NewReader([]byte("document")))
+
+	t.Run("Creating Post Callback with success", func(t *testing.T) {
+
+		storage.EXPECT().Cat(postBlock.CID).Return(reader, nil)
+
+		b, _ := json.Marshal(&postBlock)
+
+		err := updatePost(b)
+		assert.NoError(t, err)
+	})
+
+}
+
 func TestNewPostChaincodeMiddleware(t *testing.T) {
 
 	network := mocks.NewMockNetwork(t)
