@@ -241,10 +241,21 @@ func updateTopicCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB
 	}
 }
 
+func queryCategories(logger *zap.Logger, db *gorm.DB) ChaincodeQuery {
+	return func(c echo.Context) error {
+		categories := []Category{}
+		var _ = db.Find(&categories).Error
+
+		return c.JSON(success.Status(), categories)
+	}
+}
+
 func NewTopicChaincodeMiddleware(logger *zap.Logger, net common.Network, ipfs *ipfs.IPFSManager, db *gorm.DB) *ChaincodeMiddleware {
 	return NewChaincodeMiddleware(logger, net, net.GetContract("topic"),
 
 		WithChaincodeHandler("create", "CreateTopic", invokeCreateTopic(logger, ipfs, db), createTopicCallback(logger, ipfs, db)),
 		WithChaincodeHandler("update", "UpdateTopic", invokeUpdateTopic(logger, ipfs, db), updateTopicCallback(logger, ipfs, db)),
+
+		WithChaincodeQuery("categories", queryCategories(logger, db)),
 	)
 }

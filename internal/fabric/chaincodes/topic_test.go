@@ -483,6 +483,25 @@ func TestUpdateTopicCallback(t *testing.T) {
 
 }
 
+func TestQueryCategories(t *testing.T) {
+	t.Run("Querying User With Success", func(t *testing.T) {
+
+		db := newSqliteDB()
+
+		query := queryCategories(logger, db)
+		results := []CategoryGroup{}
+
+		req := httptest.NewRequest(http.MethodGet, "/api/topic/query/categories", newJsonRequest(&results))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+
+		rec := httptest.NewRecorder()
+		c := server.NewContext(req, rec)
+
+		var _ = query(c)
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+}
+
 func TestNewTopicChaincodeMiddleware(t *testing.T) {
 
 	network := mocks.NewMockNetwork(t)
