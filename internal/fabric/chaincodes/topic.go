@@ -250,6 +250,15 @@ func queryCategories(logger *zap.Logger, db *gorm.DB) ChaincodeQuery {
 	}
 }
 
+func queryTags(logger *zap.Logger, db *gorm.DB) ChaincodeQuery {
+	return func(c echo.Context) error {
+		tags := []Tag{}
+		var _ = db.Find(&tags).Error
+
+		return c.JSON(success.Status(), tags)
+	}
+}
+
 func NewTopicChaincodeMiddleware(logger *zap.Logger, net common.Network, ipfs *ipfs.IPFSManager, db *gorm.DB) *ChaincodeMiddleware {
 	return NewChaincodeMiddleware(logger, net, net.GetContract("topic"),
 
@@ -257,5 +266,6 @@ func NewTopicChaincodeMiddleware(logger *zap.Logger, net common.Network, ipfs *i
 		WithChaincodeHandler("update", "UpdateTopic", invokeUpdateTopic(logger, ipfs, db), updateTopicCallback(logger, ipfs, db)),
 
 		WithChaincodeQuery("categories", queryCategories(logger, db)),
+		WithChaincodeQuery("tags", queryTags(logger, db)),
 	)
 }

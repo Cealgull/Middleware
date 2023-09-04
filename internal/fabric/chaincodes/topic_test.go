@@ -484,7 +484,7 @@ func TestUpdateTopicCallback(t *testing.T) {
 }
 
 func TestQueryCategories(t *testing.T) {
-	t.Run("Querying User With Success", func(t *testing.T) {
+	t.Run("Querying Categories With Success", func(t *testing.T) {
 
 		db := newSqliteDB()
 
@@ -492,6 +492,25 @@ func TestQueryCategories(t *testing.T) {
 		results := []CategoryGroup{}
 
 		req := httptest.NewRequest(http.MethodGet, "/api/topic/query/categories", newJsonRequest(&results))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+
+		rec := httptest.NewRecorder()
+		c := server.NewContext(req, rec)
+
+		var _ = query(c)
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+}
+
+func TestQueryTags(t *testing.T) {
+	t.Run("Querying Tags With Success", func(t *testing.T) {
+
+		db := newSqliteDB()
+
+		query := queryTags(logger, db)
+		results := []Topic{}
+
+		req := httptest.NewRequest(http.MethodGet, "/api/topic/query/tags", newJsonRequest(&results))
 		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
 
 		rec := httptest.NewRecorder()
