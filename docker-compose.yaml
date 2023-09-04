@@ -1,4 +1,10 @@
 version: "3.9"
+networks:
+  fabric_test:
+    name: "fabric_test"
+    external: true
+  cealgull_middleware:
+    name: "cealgull_middleware"
 services:
   postgres:
     image: postgres
@@ -7,18 +13,26 @@ services:
       - POSTGRES_USER=cealgull
       - POSTGRES_DB=cealgull
     hostname: "db.cealgull.middleware"
+    networks:
+      - cealgull_middleware
 
   ipfs:
     image: ipfs/kubo
     hostname: "ipfs.cealgull.middleware"
+    networks:
+      - cealgull_middleware
 
   gateway:
     build: .
     ports:
-      - 8080:8080
+      - "8080:8080"
     volumes:
       - ./configs/config.yaml:/etc/cealgull-middleware/config.yaml:ro
-      - /home/toolmanp/projects/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/users:/etc/cealgull-middleware/crypto
+      - ${HOME}/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/users:/etc/cealgull-middleware/crypto
     depends_on:
       - postgres
       - ipfs
+    networks:
+      - cealgull_verify
+      - cealgull_middleware
+      - fabric_test
