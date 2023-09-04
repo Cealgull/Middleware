@@ -35,10 +35,18 @@ func preparePostData(t *testing.T) *gorm.DB {
 		Creator: user,
 	}
 
+	post := &Post{
+		Hash:     "aaaa",
+		Content:  "Hello world!",
+		Creator:  user,
+		BelongTo: topic,
+	}
+
 	db := newSqliteDB()
 
 	assert.NoError(t, db.Create(&user).Error)
 	assert.NoError(t, db.Create(&topic).Error)
+	assert.NoError(t, db.Create(&post).Error)
 
 	return db
 }
@@ -408,8 +416,8 @@ func TestInvokeUpdatePost(t *testing.T) {
 func TestUpdatePostCallback(t *testing.T) {
 
 	postBlock := PostBlock{
-		CID:      "abcd",
-		Hash:     "abcd",
+		CID:      "defg",
+		Hash:     "aaaa",
 		Creator:  "0x123456789",
 		ReplyTo:  "1",
 		BelongTo: "1",
@@ -445,6 +453,15 @@ func TestUpdatePostCallback(t *testing.T) {
 
 		err := updatePost(b)
 		assert.NoError(t, err)
+	})
+
+	t.Run("Creating Post Callback with hash not found", func(t *testing.T) {
+		postBlock.Hash = "unknown"
+
+		b, _ := json.Marshal(&postBlock)
+
+		err := updatePost(b)
+		assert.Error(t, err)
 	})
 
 }

@@ -147,14 +147,14 @@ func createPostCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB)
 
 func invokeUpdatePost(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) ChaincodeInvoke {
 	return func(contract common.Contract, c echo.Context) error {
-		type UpdatePostRequest struct {
+		type ChangePostRequest struct {
 			Hash    string   `json:"hash"`
 			Content string   `json:"content"`
-			Images  []string `json:"assets"`
+			Assets  []string `json:"assets"`
 			Type    string   `json:"type"`
 		}
 
-		postRequest := UpdatePostRequest{}
+		postRequest := ChangePostRequest{}
 		if err := c.Bind(&postRequest); err != nil {
 			return c.JSON(chaincodeDeserializationError.Status(), chaincodeDeserializationError.Message())
 		}
@@ -165,9 +165,9 @@ func invokeUpdatePost(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) C
 			return c.JSON(err.Status(), err.Message())
 		}
 
-		images := make([]string, len(postRequest.Images))
+		images := make([]string, len(postRequest.Assets))
 
-		for i, imageb64 := range postRequest.Images {
+		for i, imageb64 := range postRequest.Assets {
 
 			data, err := base64.StdEncoding.DecodeString(imageb64)
 
@@ -204,30 +204,33 @@ func invokeUpdatePost(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) C
 func updatePostCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) ChaincodeEventCallback {
 
 	return func(payload []byte) error {
-		postBlock := PostBlock{}
+		postChanged := PostBlock{}
 
-		var _ = json.Unmarshal(payload, &postBlock)
+		var _ = json.Unmarshal(payload, &postChanged)
 
-		assets := utils.Map(postBlock.Assets, func(image string) *Asset {
+		post := Post{}
+		if err := db.Model(&Post{}).
+			Where("hash = ?", postChanged.Hash).First(&post).Error; err != nil {
+			return err
+		}
+
+		data, err := ipfs.Cat(postChanged.CID)
+		if err != nil {
+			return err
+		}
+
+		assets := utils.Map(postChanged.Assets, func(image string) *Asset {
 			return &Asset{
-				CreatorWallet: postBlock.Creator,
+				CreatorWallet: post.CreatorWallet,
 				CID:           image,
 				ContentType:   "image/jpeg",
 			}
 		})
 
-		data, err := ipfs.Cat(postBlock.CID)
-
-		if err != nil {
-			return err
-		}
-
 		var _ = assets
 
 		return db.Transaction(func(tx *gorm.DB) error {
-			post := Post{}
-			tx.First(&post, "hash = ?", postBlock.Hash)
-			tx.Model(&post).Select("content", "update_at").Updates(map[string]interface{}{"content": string(data), "update_at": postBlock.UpdateAt,
+			tx.Model(&post).Select("content", "update_at", "assets").Updates(map[string]interface{}{"content": string(data), "update_at": postChanged.UpdateAt,
 				"assets": assets})
 
 			return nil
