@@ -602,6 +602,125 @@ func TestUpvoteTopicCallback(t *testing.T) {
 
 }
 
+func TestInvokeDownvoteTopic(t *testing.T) {
+	type DownvoteRequest struct {
+		Hash string `json:"hash"`
+		Type string `json:"type"`
+	}
+
+	payload := DownvoteRequest{
+		Hash: "topic1",
+		Type: "Topic",
+	}
+
+	contract := fabricmock.NewMockContract()
+
+	db := prepareTopicData(t)
+
+	downvoteTopic := invokeDownvoteTopic(logger, db)
+
+	t.Run("Downvoting Topic With Unmarshal Error", func(t *testing.T) {
+
+		req := httptest.NewRequest(http.MethodPost, "/api/topic/invoke/downvote", bytes.NewReader([]byte{1, 2, 3}))
+		rec := httptest.NewRecorder()
+
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		err := downvoteTopic(contract, c)
+
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+
+	t.Run("Downvoting Topic With Hash Error", func(t *testing.T) {
+		payload.Hash = "a111"
+		req := httptest.NewRequest(http.MethodPost, "/api/topic/invoke/downvote", newJsonRequest(&payload))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		err := downvoteTopic(contract, c)
+
+		assert.Error(t, err)
+		payload.Hash = "topic1"
+	})
+
+	t.Run("Downvoting Topic With Chaincode Network Failure", func(t *testing.T) {
+
+		req := httptest.NewRequest(http.MethodPost, "/api/topic/invoke/downvote", newJsonRequest(&payload))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		contract.On("Submit", "DownvoteTopic", mock.Anything).Return([]byte(nil), errors.New("Hello world")).Once()
+		err := downvoteTopic(contract, c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+
+	})
+
+	t.Run("Downvoting Topic With Success", func(t *testing.T) {
+
+		req := httptest.NewRequest(http.MethodPost, "/api/topic/invoke/downvote", newJsonRequest(&payload))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		contract.On("Submit", "DownvoteTopic", mock.Anything).Return([]byte(nil), nil).Once()
+		err := downvoteTopic(contract, c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+}
+
+func TestDownvoteTopicCallback(t *testing.T) {
+
+	downvoteBlock := DownvoteBlock{
+		Hash:    "topic1",
+		Creator: "0x123456789",
+	}
+
+	db := prepareTopicData(t)
+
+	downvoteTopic := downvoteTopicCallback(logger, db)
+
+	t.Run("Downvoting Topic Callback with hash not found", func(t *testing.T) {
+		downvoteBlock.Hash = "unknown"
+
+		b, _ := json.Marshal(&downvoteBlock)
+
+		err := downvoteTopic(b)
+		assert.Error(t, err)
+		downvoteBlock.Hash = "topic1"
+	})
+
+	t.Run("Downvoting Topic Callback with creator not found", func(t *testing.T) {
+		downvoteBlock.Creator = "unknown"
+
+		b, _ := json.Marshal(&downvoteBlock)
+
+		err := downvoteTopic(b)
+		assert.Error(t, err)
+		downvoteBlock.Creator = "0x123456789"
+	})
+
+	t.Run("Downvoting Topic Callback with success", func(t *testing.T) {
+
+		b, _ := json.Marshal(&downvoteBlock)
+
+		err := downvoteTopic(b)
+		assert.NoError(t, err)
+	})
+
+}
+
 func TestQueryCategories(t *testing.T) {
 	t.Run("Querying Categories With Success", func(t *testing.T) {
 
