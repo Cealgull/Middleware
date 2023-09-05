@@ -58,6 +58,11 @@ type Upvote struct {
 	OwnerType string
 }
 
+type UpvoteBlock struct {
+	Hash    string `json:"hash"`
+	Creator string `json:"creator"`
+}
+
 type Downvote struct {
 	ID        uint           `gorm:"primaryKey"`
 	CreatedAt time.Time      `gorm:"autoCreateTime"`
@@ -68,6 +73,11 @@ type Downvote struct {
 	OwnerType string
 }
 
+type DownvoteBlock struct {
+	Hash    string `json:"hash"`
+	Creator string `json:"creator"`
+}
+
 type EmojiRelation struct {
 	ID        uint `gorm:"primaryKey"`
 	EmojiID   uint `gorm:"not null"`
@@ -76,6 +86,12 @@ type EmojiRelation struct {
 	OwnerType string         `gorm:"not null"`
 	CreatedAt time.Time      `gorm:"autoCreateTime"`
 	DeletedAt gorm.DeletedAt `gorm:"index"`
+}
+
+type EmojiBlock struct {
+	Hash    string `json:"hash"`
+	Creator string `json:"creator"`
+	Code    uint   `json:"code"`
 }
 
 type Emoji struct {
@@ -106,4 +122,3 @@ func (d *Downvote) MarshalJSON() ([]byte, error) {
 	})
 
 }
-
