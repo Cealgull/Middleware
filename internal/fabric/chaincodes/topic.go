@@ -305,7 +305,7 @@ func upvoteTopicCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallback
 				OwnerType: "Topic",
 			}
 
-			var _ = tx.Create(&upvote).Error
+			var _ = tx.Model(&topic).Association("Upvotes").Append(&upvote)
 
 			return nil
 		})
@@ -376,7 +376,7 @@ func downvoteTopicCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallba
 				OwnerType: "Topic",
 			}
 
-			var _ = tx.Create(&downvote).Error
+			var _ = tx.Model(&topic).Association("Downvotes").Append(&downvote)
 
 			return nil
 		})
