@@ -483,6 +483,125 @@ func TestUpdateTopicCallback(t *testing.T) {
 
 }
 
+func TestInvokeUpvoteTopic(t *testing.T) {
+	type UpvoteRequest struct {
+		Hash string `json:"hash"`
+		Type string `json:"type"`
+	}
+
+	payload := UpvoteRequest{
+		Hash: "topic1",
+		Type: "Topic",
+	}
+
+	contract := fabricmock.NewMockContract()
+
+	db := prepareTopicData(t)
+
+	upvoteTopic := invokeUpvoteTopic(logger, db)
+
+	t.Run("Upvoting Topic With Unmarshal Error", func(t *testing.T) {
+
+		req := httptest.NewRequest(http.MethodPost, "/api/topic/invoke/upvote", bytes.NewReader([]byte{1, 2, 3}))
+		rec := httptest.NewRecorder()
+
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		err := upvoteTopic(contract, c)
+
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+
+	t.Run("Upvoting Topic With Hash Error", func(t *testing.T) {
+		payload.Hash = "a111"
+		req := httptest.NewRequest(http.MethodPost, "/api/topic/invoke/upvote", newJsonRequest(&payload))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		err := upvoteTopic(contract, c)
+
+		assert.Error(t, err)
+		payload.Hash = "topic1"
+	})
+
+	t.Run("Upvoting Topic With Chaincode Network Failure", func(t *testing.T) {
+
+		req := httptest.NewRequest(http.MethodPost, "/api/topic/invoke/upvote", newJsonRequest(&payload))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		contract.On("Submit", "UpvoteTopic", mock.Anything).Return([]byte(nil), errors.New("Hello world")).Once()
+		err := upvoteTopic(contract, c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+
+	})
+
+	t.Run("Upvoting Topic With Success", func(t *testing.T) {
+
+		req := httptest.NewRequest(http.MethodPost, "/api/topic/invoke/upvote", newJsonRequest(&payload))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		contract.On("Submit", "UpvoteTopic", mock.Anything).Return([]byte(nil), nil).Once()
+		err := upvoteTopic(contract, c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+}
+
+func TestUpvoteTopicCallback(t *testing.T) {
+
+	upvoteBlock := UpvoteBlock{
+		Hash:    "topic1",
+		Creator: "0x123456789",
+	}
+
+	db := prepareTopicData(t)
+
+	upvoteTopic := upvoteTopicCallback(logger, db)
+
+	t.Run("Upvoting Topic Callback with hash not found", func(t *testing.T) {
+		upvoteBlock.Hash = "unknown"
+
+		b, _ := json.Marshal(&upvoteBlock)
+
+		err := upvoteTopic(b)
+		assert.Error(t, err)
+		upvoteBlock.Hash = "topic1"
+	})
+
+	t.Run("Upvoting Topic Callback with creator not found", func(t *testing.T) {
+		upvoteBlock.Creator = "unknown"
+
+		b, _ := json.Marshal(&upvoteBlock)
+
+		err := upvoteTopic(b)
+		assert.Error(t, err)
+		upvoteBlock.Creator = "0x123456789"
+	})
+
+	t.Run("Upvoting Topic Callback with success", func(t *testing.T) {
+
+		b, _ := json.Marshal(&upvoteBlock)
+
+		err := upvoteTopic(b)
+		assert.NoError(t, err)
+	})
+
+}
+
 func TestQueryCategories(t *testing.T) {
 	t.Run("Querying Categories With Success", func(t *testing.T) {
 

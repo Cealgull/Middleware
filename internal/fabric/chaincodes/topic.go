@@ -241,6 +241,77 @@ func updateTopicCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB
 	}
 }
 
+func invokeUpvoteTopic(logger *zap.Logger, db *gorm.DB) ChaincodeInvoke {
+	return func(contract common.Contract, c echo.Context) error {
+		type UpvoteRequest struct {
+			Hash string `json:"hash"`
+			Type string `json:"type"`
+		}
+
+		upvoteRequest := UpvoteRequest{}
+		if err := c.Bind(&upvoteRequest); err != nil {
+			return c.JSON(chaincodeDeserializationError.Status(), chaincodeDeserializationError.Message())
+		}
+
+		topic := Topic{}
+		if err := db.Model(&Topic{}).
+			Where("hash = ?", upvoteRequest.Hash).First(&topic).Error; err != nil {
+			return err
+		}
+
+		s, _ := session.Get("session", c)
+		wallet := s.Values["wallet"].(string)
+
+		upvoteBlock := UpvoteBlock{
+			Hash:    upvoteRequest.Hash,
+			Creator: wallet,
+		}
+		b, _ := json.Marshal(&upvoteBlock)
+
+		if _, err := contract.Submit("UpvoteTopic", client.WithBytesArguments(b)); err != nil {
+			chaincodeInvokeFailure := ChaincodeInvokeFailureError{"UpvoteTopic"}
+			return c.JSON(chaincodeInvokeFailure.Status(), chaincodeInvokeFailure.Message())
+		}
+
+		return c.JSON(success.Status(), success.Message())
+
+	}
+}
+
+func upvoteTopicCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallback {
+
+	return func(payload []byte) error {
+
+		upvoteBlock := UpvoteBlock{}
+
+		var _ = json.Unmarshal(payload, &upvoteBlock)
+
+		topic := Topic{}
+		if err := db.Model(&Topic{}).
+			Where("hash = ?", upvoteBlock.Hash).First(&topic).Error; err != nil {
+			return err
+		}
+
+		user := User{}
+		if err := db.Model(&User{}).
+			Where("wallet = ?", upvoteBlock.Creator).First(&user).Error; err != nil {
+			return err
+		}
+
+		return db.Transaction(func(tx *gorm.DB) error {
+			upvote := Upvote{
+				Creator:   &user,
+				OwnerID:   topic.ID,
+				OwnerType: "Topic",
+			}
+
+			var _ = tx.Create(&upvote).Error
+
+			return nil
+		})
+	}
+}
+
 func queryCategories(logger *zap.Logger, db *gorm.DB) ChaincodeQuery {
 	return func(c echo.Context) error {
 		categories := []Category{}
@@ -264,6 +335,8 @@ func NewTopicChaincodeMiddleware(logger *zap.Logger, net common.Network, ipfs *i
 
 		WithChaincodeHandler("create", "CreateTopic", invokeCreateTopic(logger, ipfs, db), createTopicCallback(logger, ipfs, db)),
 		WithChaincodeHandler("update", "UpdateTopic", invokeUpdateTopic(logger, ipfs, db), updateTopicCallback(logger, ipfs, db)),
+
+		WithChaincodeHandler("upvote", "UpvoteTopic", invokeUpvoteTopic(logger, db), upvoteTopicCallback(logger, db)),
 
 		WithChaincodeQuery("categories", queryCategories(logger, db)),
 		WithChaincodeQuery("tags", queryTags(logger, db)),
