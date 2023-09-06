@@ -50,6 +50,7 @@ func (p *Post) MarshalJSON() ([]byte, error) {
 		Creator  *User     `json:"creator"`
 		Hash     string    `json:"hash"`
 		Content  string    `json:"content"`
+    CreateAt time.Time `json:"createAt"`
 		UpdateAt time.Time `json:"updateAt"`
 		Assets   []*Asset  `json:"assets,omitempty"`
 	}
@@ -71,13 +72,19 @@ func (p *Post) MarshalJSON() ([]byte, error) {
 		Content:  p.Content,
 		CreateAt: p.CreateAt,
 		UpdateAt: p.UpdateAt,
-		ReplyTo: &DisplayReply{
-			Hash:     p.ReplyTo.Hash,
-			Creator:  p.ReplyTo.Creator,
-			Content:  p.Content,
-			UpdateAt: p.ReplyTo.UpdateAt,
-			Assets:   p.ReplyTo.Assets,
-		},
+		ReplyTo: func() *DisplayReply {
+			if p.ReplyTo != nil {
+				return &DisplayReply{
+					Hash:     p.ReplyTo.Hash,
+					Creator:  p.ReplyTo.Creator,
+					Content:  p.Content,
+          CreateAt: p.ReplyTo.CreateAt,
+					UpdateAt: p.ReplyTo.UpdateAt,
+					Assets:   p.ReplyTo.Assets,
+				}
+			}
+			return nil
+		}(),
 		BelongTo: func() string {
 			if p.BelongTo != nil {
 				return p.BelongTo.Title
