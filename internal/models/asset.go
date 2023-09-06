@@ -26,7 +26,7 @@ func (a *Asset) MarshalJSON() ([]byte, error) {
 		CID         string    `json:"cid"`
 	}{
 		ContentType: a.ContentType,
-		Creator:     a.Creator.Username,
+		Creator:     a.CreatorWallet,
 		CreatedAt:   a.CreatedAt,
 		UpdatedAt:   a.UpdatedAt,
 		CID:         a.CID,

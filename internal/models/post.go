@@ -16,28 +16,27 @@ type PostRequest struct {
 }
 
 type PostBlock struct {
-	Hash     string    `json:"hash"`
-	Creator  string    `json:"creator"`
-	CID      string    `json:"cid"`
-	CreateAt time.Time `json:"createAt"`
-	UpdateAt time.Time `json:"updateAt"`
-	ReplyTO  string    `json:"replyTo"`
-	BelongTo string    `json:"belongTo"`
-	Assets   []*Asset  `json:"assets,omitempty"`
+	Hash     string   `json:"hash"`
+	Creator  string   `json:"creator"`
+	CID      string   `json:"cid"`
+	ReplyTo  string   `json:"replyTo"`
+	BelongTo string   `json:"belongTo"`
+	Assets   []string `json:"assets,omitempty"`
 }
 
 type Post struct {
-	ID            uint   `gorm:"primaryKey"`
-	Hash          string `gorm:"uniqueIndex"`
-	CreatorWallet string
+	ID            uint      `gorm:"primaryKey"`
+	Hash          string    `gorm:"uniqueIndex"`
+	CreatorWallet string    `gorm:"index;not null"`
 	Creator       *User     `gorm:"references:Wallet"`
 	Content       string    `gorm:"not null"`
-	CreateAt      time.Time `gorm:"not null"`
-	UpdateAt      time.Time `gorm:"not null"`
+	CreateAt      time.Time `gorm:"autoCreateTime;not null"`
+	UpdateAt      time.Time `gorm:"autoUpdateTime;not null"`
 	DeletedAt     gorm.DeletedAt
-	ReplyTo       *Post `gorm:"foreignKey:ID"`
-	BelongToID    uint  `gorm:"not null"`
-	BelongTo      *Topic
+	ReplyToID     *uint
+	ReplyTo       *Post
+	BelongToHash  string `gorm:"index;not null"`
+	BelongTo      *Topic `gorm:"references:Hash;foreignKey:BelongToHash"`
 
 	Upvotes   []*Upvote   `gorm:"polymorphic:Owner"`
 	Downvotes []*Downvote `gorm:"polymorphic:Owner"`
@@ -49,14 +48,14 @@ func (p *Post) MarshalJSON() ([]byte, error) {
 
 	type DisplayReply struct {
 		Creator  *User     `json:"creator"`
-    Hash     string    `json:"hash"`
+		Hash     string    `json:"hash"`
 		Content  string    `json:"content"`
+    CreateAt time.Time `json:"createAt"`
 		UpdateAt time.Time `json:"updateAt"`
 		Assets   []*Asset  `json:"assets,omitempty"`
 	}
 
 	return json.Marshal(&struct {
-		ID        uint          `json:"id"`
 		Hash      string        `json:"hash"`
 		Creator   *User         `json:"creator"`
 		Content   string        `json:"content"`
@@ -68,19 +67,24 @@ func (p *Post) MarshalJSON() ([]byte, error) {
 		Downvotes []string      `json:"downvotes"`
 		BelongTo  string        `json:"belongTo"`
 	}{
-		ID:       p.ID,
 		Hash:     p.Hash,
 		Creator:  p.Creator,
 		Content:  p.Content,
 		CreateAt: p.CreateAt,
 		UpdateAt: p.UpdateAt,
-		ReplyTo: &DisplayReply{
-      Hash: p.ReplyTo.Hash,
-			Creator:  p.ReplyTo.Creator,
-			Content:  p.Content,
-			UpdateAt: p.ReplyTo.UpdateAt,
-			Assets:   p.ReplyTo.Assets,
-		},
+		ReplyTo: func() *DisplayReply {
+			if p.ReplyTo != nil {
+				return &DisplayReply{
+					Hash:     p.ReplyTo.Hash,
+					Creator:  p.ReplyTo.Creator,
+					Content:  p.Content,
+          CreateAt: p.ReplyTo.CreateAt,
+					UpdateAt: p.ReplyTo.UpdateAt,
+					Assets:   p.ReplyTo.Assets,
+				}
+			}
+			return nil
+		}(),
 		BelongTo: func() string {
 			if p.BelongTo != nil {
 				return p.BelongTo.Title
@@ -90,10 +94,10 @@ func (p *Post) MarshalJSON() ([]byte, error) {
 		}(),
 		Assets: p.Assets,
 		Upvotes: utils.Map(p.Upvotes, func(upvote *Upvote) string {
-			return upvote.Creator.Wallet
+			return upvote.CreatorWallet
 		}),
 		Downvotes: utils.Map(p.Downvotes, func(downvote *Downvote) string {
-			return downvote.Creator.Wallet
+			return downvote.CreatorWallet
 		}),
 	})
 }

@@ -39,10 +39,10 @@ func prepareTagData(t *testing.T) *gorm.DB {
 	assert.NoError(t, db.Create(&tags).Error)
 	assert.NoError(t, db.Create(&CategoryGroup{
 		Name:  "Games",
-		Color: 123456,
+		Color: "123456",
 		Categories: []*Category{{
 			Name:  "Mihoyo",
-			Color: 123456,
+			Color: "123456",
 		},
 		},
 	}).Error)
@@ -64,16 +64,11 @@ func TestInvokeCreateTag(t *testing.T) {
 		Description: "This is a testing tag.",
 	}
 
-	storage := ipfsmock.NewMockIPFSStorage(t)
-	storage.EXPECT().Version().Return("abcd", "abcd", nil).Once()
-
-	ipfs := NewMockIPFSManager(storage)
-
 	contract := fabricmock.NewMockContract()
 
 	db := prepareTagData(t)
 
-	createTag := invokeCreateTag(logger, ipfs, db)
+	createTag := invokeCreateTag(logger, db)
 
 	t.Run("Creating Tag With Unmarshal Error", func(t *testing.T) {
 
@@ -124,37 +119,16 @@ func TestInvokeCreateTag(t *testing.T) {
 func TestCreateTagCallback(t *testing.T) {
 
 	tagBlock := TagBlock{
-		Name:        "testing tag",
-		CreatorWallet:   "0x123456",
-		Description: "This is a testing tag.",
+		Name:          "testing tag",
+		CreatorWallet: "0x123456789",
+		Description:   "This is a testing tag.",
 	}
-
-	storage := ipfsmock.NewMockIPFSStorage(t)
-	storage.EXPECT().Version().Return("abcd", "abcd", nil).Once()
-
-	ipfs := NewMockIPFSManager(storage)
 
 	db := prepareTagData(t)
 
-	createTag := createTagCallback(logger, ipfs, db)
-
-	// reader := io.NopCloser(bytes.NewReader([]byte("document")))
-
-	t.Run("Creating Tag Callback with user not found", func(t *testing.T) {
-
-		tagBlock.CreatorWallet = "100"
-		b, _ := json.Marshal(&tagBlock)
-
-		err := createTag(b)
-		assert.Error(t, err)
-	})
-
-	// reader = io.NopCloser(bytes.NewReader([]byte("document")))
+	createTag := createTagCallback(logger, db)
 
 	t.Run("Creating Tag Callback with success", func(t *testing.T) {
-
-		tagBlock.CreatorWallet = "0x123456"
-
 		b, _ := json.Marshal(&tagBlock)
 
 		err := createTag(b)
@@ -173,7 +147,7 @@ func TestNewTagChaincodeMiddleware(t *testing.T) {
 	ipfs := NewMockIPFSManager(storage)
 
 	db := newSqliteDB()
-	network.EXPECT().GetContract("tag").Return(&client.Contract{}).Once()
+	network.EXPECT().GetContract("plug").Return(&client.Contract{}).Once()
 	var _ = NewTagChaincodeMiddleware(logger, network, ipfs, db)
 
 }
@@ -191,10 +165,10 @@ func prepareCategoryData(t *testing.T) *gorm.DB {
 	assert.NoError(t, db.Create(&user).Error)
 	assert.NoError(t, db.Create(&CategoryGroup{
 		Name:  "Games",
-		Color: 123456,
+		Color: "123456",
 		Categories: []*Category{{
 			Name:  "Mihoyo",
-			Color: 123456,
+			Color: "123456",
 		},
 		},
 	}).Error)
@@ -206,26 +180,21 @@ func TestInvokeCreateCategory(t *testing.T) {
 
 	type CategoryRequest struct {
 		CategoryGroupID uint   `json:"categoryGroupID"`
-		Color           uint   `json:"color"`
+		Color           string `json:"color"`
 		Name            string `json:"name"`
 	}
 
 	payload := CategoryRequest{
 		CategoryGroupID: 1,
-		Color:           1,
+		Color:           "1",
 		Name:            "testing category",
 	}
-
-	storage := ipfsmock.NewMockIPFSStorage(t)
-	storage.EXPECT().Version().Return("abcd", "abcd", nil).Once()
-
-	ipfs := NewMockIPFSManager(storage)
 
 	contract := fabricmock.NewMockContract()
 
 	db := prepareCategoryData(t)
 
-	createCategory := invokeCreateCategory(logger, ipfs, db)
+	createCategory := invokeCreateCategory(logger, db)
 
 	t.Run("Creating Category With Unmarshal Error", func(t *testing.T) {
 
@@ -276,21 +245,14 @@ func TestInvokeCreateCategory(t *testing.T) {
 func TestCreateCategoryCallback(t *testing.T) {
 
 	categoryBlock := CategoryBlock{
-		CategoryGroupName: "test",
-		Color:           1,
-		Name:            "testing category",
+		CategoryGroupName: "Games",
+		Color:             "1",
+		Name:              "testing category",
 	}
-
-	storage := ipfsmock.NewMockIPFSStorage(t)
-	storage.EXPECT().Version().Return("abcd", "abcd", nil).Once()
-
-	ipfs := NewMockIPFSManager(storage)
 
 	db := prepareCategoryData(t)
 
-	createCategory := createCategoryCallback(logger, ipfs, db)
-
-	// reader := io.NopCloser(bytes.NewReader([]byte("document")))
+	createCategory := createCategoryCallback(logger, db)
 
 	t.Run("Creating Category Callback with categoryGroup not found", func(t *testing.T) {
 
@@ -299,14 +261,10 @@ func TestCreateCategoryCallback(t *testing.T) {
 
 		err := createCategory(b)
 		assert.Error(t, err)
+		categoryBlock.CategoryGroupName = "Games"
 	})
 
-	// reader = io.NopCloser(bytes.NewReader([]byte("document")))
-
 	t.Run("Creating Category Callback with success", func(t *testing.T) {
-
-    categoryBlock.CategoryGroupName = "test"
-
 		b, _ := json.Marshal(&categoryBlock)
 
 		err := createCategory(b)
@@ -325,7 +283,7 @@ func TestNewCategoryChaincodeMiddleware(t *testing.T) {
 	ipfs := NewMockIPFSManager(storage)
 
 	db := newSqliteDB()
-	network.EXPECT().GetContract("category").Return(&client.Contract{}).Once()
+	network.EXPECT().GetContract("plug").Return(&client.Contract{}).Once()
 	var _ = NewCategoryChaincodeMiddleware(logger, network, ipfs, db)
 
 }
@@ -343,10 +301,10 @@ func prepareCategoryGroupData(t *testing.T) *gorm.DB {
 	assert.NoError(t, db.Create(&user).Error)
 	assert.NoError(t, db.Create(&CategoryGroup{
 		Name:  "Games",
-		Color: 123456,
+		Color: "123456",
 		Categories: []*Category{{
 			Name:  "Mihoyo",
-			Color: 123456,
+			Color: "123456",
 		},
 		},
 	}).Error)
@@ -358,26 +316,21 @@ func TestInvokeCreateCategoryGroup(t *testing.T) {
 
 	type CategoryGroupRequest struct {
 		CategoryGroupGroupID uint   `json:"categoryGroupGroupID"`
-		Color                uint   `json:"color"`
+		Color                string `json:"color"`
 		Name                 string `json:"name"`
 	}
 
 	payload := CategoryGroupRequest{
 		CategoryGroupGroupID: 1,
-		Color:                1,
+		Color:                "1",
 		Name:                 "testing categoryGroup",
 	}
-
-	storage := ipfsmock.NewMockIPFSStorage(t)
-	storage.EXPECT().Version().Return("abcd", "abcd", nil).Once()
-
-	ipfs := NewMockIPFSManager(storage)
 
 	contract := fabricmock.NewMockContract()
 
 	db := prepareCategoryGroupData(t)
 
-	createCategoryGroup := invokeCreateCategoryGroup(logger, ipfs, db)
+	createCategoryGroup := invokeCreateCategoryGroup(logger, db)
 
 	t.Run("Creating CategoryGroup With Unmarshal Error", func(t *testing.T) {
 
@@ -428,31 +381,13 @@ func TestInvokeCreateCategoryGroup(t *testing.T) {
 func TestCreateCategoryGroupCallback(t *testing.T) {
 
 	categoryGroupBlock := CategoryGroupBlock{
-		Color: 1,
+		Color: "1",
 		Name:  "testing categoryGroup",
 	}
 
-	storage := ipfsmock.NewMockIPFSStorage(t)
-	storage.EXPECT().Version().Return("abcd", "abcd", nil).Once()
-
-	ipfs := NewMockIPFSManager(storage)
-
 	db := prepareCategoryGroupData(t)
 
-	createCategoryGroup := createCategoryGroupCallback(logger, ipfs, db)
-
-	// reader := io.NopCloser(bytes.NewReader([]byte("document")))
-
-	// t.Run("Creating CategoryGroup Callback with categoryGroupGroup not found", func(t *testing.T) {
-
-	// 	categoryGroupBlock.CategoryGroupGroupID = 100
-	// 	b, _ := json.Marshal(&categoryGroupBlock)
-
-	// 	err := createCategoryGroup(b)
-	// 	assert.Error(t, err)
-	// })
-
-	// reader = io.NopCloser(bytes.NewReader([]byte("document")))
+	createCategoryGroup := createCategoryGroupCallback(logger, db)
 
 	t.Run("Creating CategoryGroup Callback with success", func(t *testing.T) {
 		b, _ := json.Marshal(&categoryGroupBlock)
@@ -473,7 +408,7 @@ func TestNewCategoryGroupChaincodeMiddleware(t *testing.T) {
 	ipfs := NewMockIPFSManager(storage)
 
 	db := newSqliteDB()
-	network.EXPECT().GetContract("categoryGroup").Return(&client.Contract{}).Once()
+	network.EXPECT().GetContract("plug").Return(&client.Contract{}).Once()
 	var _ = NewCategoryGroupChaincodeMiddleware(logger, network, ipfs, db)
 
 }

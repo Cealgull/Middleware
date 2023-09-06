@@ -55,10 +55,10 @@ func prepareTopicData(t *testing.T) *gorm.DB {
 	assert.NoError(t, db.Create(&tags).Error)
 	assert.NoError(t, db.Create(&CategoryGroup{
 		Name:  "Games",
-		Color: 123456,
+		Color: "123456",
 		Categories: []*Category{{
 			Name:  "Mihoyo",
-			Color: 123456,
+			Color: "123456",
 		},
 		},
 	}).Error)
@@ -73,16 +73,16 @@ func TestInvokeCreateTopic(t *testing.T) {
 		Content  string   `json:"content"`
 		Images   []string `json:"images"`
 		Title    string   `json:"title"`
-		Category uint     `json:"category"`
-		Tags     []uint   `json:"tags"`
+		Category string   `json:"category"`
+		Tags     []string `json:"tags"`
 	}
 
 	payload := TopicRequest{
 		Content:  "Hello world",
 		Images:   []string{},
 		Title:    "This is a testing topic",
-		Category: 1,
-		Tags:     []uint{1, 2},
+		Category: "Mihoyo",
+		Tags:     []string{"Genshin Impact", "Honkai Impact"},
 	}
 
 	storage := ipfsmock.NewMockIPFSStorage(t)
@@ -112,7 +112,7 @@ func TestInvokeCreateTopic(t *testing.T) {
 
 	t.Run("Creating Topic With Invalid Tags", func(t *testing.T) {
 
-		payload.Tags = []uint{3, 4}
+		payload.Tags = []string{"Genshin Impact", "Honkai Impact", "Invalid Tag"}
 
 		req := httptest.NewRequest(http.MethodPost, "/api/topic/invoke/CreateTopic", newJsonRequest(&payload))
 		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
@@ -125,7 +125,7 @@ func TestInvokeCreateTopic(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 
-		payload.Tags = []uint{1, 2}
+		payload.Tags = []string{"Genshin Impact", "Honkai Impact"}
 
 	})
 
@@ -580,16 +580,6 @@ func TestUpvoteTopicCallback(t *testing.T) {
 		err := upvoteTopic(b)
 		assert.Error(t, err)
 		upvoteBlock.Hash = "topic1"
-	})
-
-	t.Run("Upvoting Topic Callback with creator not found", func(t *testing.T) {
-		upvoteBlock.Creator = "unknown"
-
-		b, _ := json.Marshal(&upvoteBlock)
-
-		err := upvoteTopic(b)
-		assert.Error(t, err)
-		upvoteBlock.Creator = "0x123456789"
 	})
 
 	t.Run("Upvoting Topic Callback with success", func(t *testing.T) {

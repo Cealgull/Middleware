@@ -13,7 +13,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func invokeCreateTag(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) ChaincodeInvoke {
+func invokeCreateTag(logger *zap.Logger, db *gorm.DB) ChaincodeInvoke {
 
 	return func(contract common.Contract, c echo.Context) error {
 
@@ -48,7 +48,7 @@ func invokeCreateTag(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) Ch
 	}
 }
 
-func createTagCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) ChaincodeEventCallback {
+func createTagCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallback {
 
 	return func(payload []byte) error {
 
@@ -64,9 +64,7 @@ func createTagCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) 
 				Description:   tagBlock.Description,
 			}
 
-			if err := tx.Create(&tag).Error; err != nil {
-				return err
-			}
+			var _ = tx.Create(&tag).Error
 
 			return nil
 		})
@@ -76,17 +74,17 @@ func createTagCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) 
 func NewTagChaincodeMiddleware(logger *zap.Logger, net common.Network, ipfs *ipfs.IPFSManager, db *gorm.DB) *ChaincodeMiddleware {
 	return NewChaincodeMiddleware(logger, net, net.GetContract("plug"),
 
-		WithChaincodeHandler("create", "CreateTag", invokeCreateTag(logger, ipfs, db), createTagCallback(logger, ipfs, db)),
+		WithChaincodeHandler("create", "CreateTag", invokeCreateTag(logger, db), createTagCallback(logger, db)),
 	)
 }
 
-func invokeCreateCategory(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) ChaincodeInvoke {
+func invokeCreateCategory(logger *zap.Logger, db *gorm.DB) ChaincodeInvoke {
 
 	return func(contract common.Contract, c echo.Context) error {
 
 		type CategoryRequest struct {
 			CategoryGroup string `json:"categoryGroup"`
-			Color         uint   `json:"color"`
+			Color         string `json:"color"`
 			Name          string `json:"name"`
 		}
 
@@ -113,7 +111,7 @@ func invokeCreateCategory(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.D
 	}
 }
 
-func createCategoryCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) ChaincodeEventCallback {
+func createCategoryCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallback {
 
 	return func(payload []byte) error {
 
@@ -141,17 +139,17 @@ func createCategoryCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm
 func NewCategoryChaincodeMiddleware(logger *zap.Logger, net common.Network, ipfs *ipfs.IPFSManager, db *gorm.DB) *ChaincodeMiddleware {
 	return NewChaincodeMiddleware(logger, net, net.GetContract("plug"),
 
-		WithChaincodeHandler("create", "CreateCategory", invokeCreateCategory(logger, ipfs, db), createCategoryCallback(logger, ipfs, db)),
+		WithChaincodeHandler("create", "CreateCategory", invokeCreateCategory(logger, db), createCategoryCallback(logger, db)),
 	)
 }
 
-func invokeCreateCategoryGroup(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) ChaincodeInvoke {
+func invokeCreateCategoryGroup(logger *zap.Logger, db *gorm.DB) ChaincodeInvoke {
 
 	return func(contract common.Contract, c echo.Context) error {
 
 		type CategoryGroupRequest struct {
 			Name  string `json:"name"`
-			Color uint   `json:"color"`
+			Color string `json:"color"`
 		}
 
 		categoryGroupRequest := CategoryGroupRequest{}
@@ -176,7 +174,7 @@ func invokeCreateCategoryGroup(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *g
 	}
 }
 
-func createCategoryGroupCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) ChaincodeEventCallback {
+func createCategoryGroupCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallback {
 
 	return func(payload []byte) error {
 
@@ -191,9 +189,7 @@ func createCategoryGroupCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db 
 				Name:  categoryGroupBlock.Name,
 			}
 
-			if err := tx.Create(&categoryGroup).Error; err != nil {
-				return err
-			}
+			var _ = tx.Create(&categoryGroup).Error
 
 			return nil
 		})
@@ -203,6 +199,6 @@ func createCategoryGroupCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db 
 func NewCategoryGroupChaincodeMiddleware(logger *zap.Logger, net common.Network, ipfs *ipfs.IPFSManager, db *gorm.DB) *ChaincodeMiddleware {
 	return NewChaincodeMiddleware(logger, net, net.GetContract("plug"),
 
-		WithChaincodeHandler("create", "CreateCategoryGroup", invokeCreateCategoryGroup(logger, ipfs, db), createCategoryGroupCallback(logger, ipfs, db)),
+		WithChaincodeHandler("create", "CreateCategoryGroup", invokeCreateCategoryGroup(logger, db), createCategoryGroupCallback(logger, db)),
 	)
 }

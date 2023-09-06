@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from .config import *
 
 from cryptography.hazmat.primitives.asymmetric import ed25519
@@ -47,9 +48,12 @@ def test_auth_login() -> Credential:
     return Credential(wallet=wallet, cookies=cookies, cert=cert)
 
 
-def request_with_credential(
-    credential: Credential, endpoint: str, payload: dict
-) -> dict:
-    return requests.post(
-        CEALGULL_MIDDLEWARE_HOST + endpoint, cookies=credential.cookies, json=payload
-    ).json()
+def get_request_handler(credential: Credential) -> Callable[[str, dict], dict]:
+    def f(endpoint: str, payload: dict):
+        return requests.post(
+            CEALGULL_MIDDLEWARE_HOST + endpoint,
+            cookies=credential.cookies,
+            json=payload,
+        ).json()
+
+    return f
