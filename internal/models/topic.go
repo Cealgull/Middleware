@@ -30,7 +30,7 @@ type Topic struct {
 	CategoryAssigned *CategoryRelation
 	TagsAssigned     []*TagRelation `gorm:"polymorphic:Owner"`
 	Upvotes          []*Upvote      `gorm:"polymorphic:Owner"`
-	Downvote         []*Downvote    `gorm:"polymorphic:Owner"`
+	Downvotes         []*Downvote    `gorm:"polymorphic:Owner"`
 	Assets           []*Asset       `gorm:"polymorphic:Owner"`
 	Closed           bool           `gorm:"not null"`
 
@@ -42,13 +42,13 @@ type Topic struct {
 func (t *Topic) MarshalJSON() ([]byte, error) {
 
 	type DisplayTag struct {
-		Name string `json:"title"`
-    Color string `json:"color"`
+		Name  string `json:"title"`
+		Color string `json:"color"`
 	}
 
 	type DisplayCategory struct {
 		Name  string `json:"title"`
-		Color uint   `json:"color"`
+		Color string `json:"color"`
 	}
 
 	type DisplayAsset struct {
@@ -60,7 +60,6 @@ func (t *Topic) MarshalJSON() ([]byte, error) {
 	}
 
 	return json.Marshal(&struct {
-		ID               uint             `json:"id"`
 		Hash             string           `json:"hash"`
 		Title            string           `json:"title"`
 		Creator          *User            `json:"creator"`
@@ -75,17 +74,16 @@ func (t *Topic) MarshalJSON() ([]byte, error) {
 		CreatedAt        time.Time        `json:"createdAt"`
 		UpdatedAt        time.Time        `json:"updatedAt"`
 	}{
-		ID:               t.ID,
 		Hash:             t.Hash,
 		Title:            t.Title,
 		Creator:          t.Creator,
 		Content:          t.Content,
-		CategoryAssigned: &DisplayCategory{Name: t.CategoryAssigned.Category.Name},
+		CategoryAssigned: &DisplayCategory{Name: t.CategoryAssigned.CategoryName},
 		TagsAssigned: utils.Map(t.TagsAssigned, func(t *TagRelation) *DisplayTag {
-        return &DisplayTag{ Name: t.Tag.Name}
+			return &DisplayTag{Name: t.TagName}
 		}),
-		Upvotes:   utils.Map(t.Upvotes, func(u *Upvote) string { return u.Creator.Wallet }),
-		Downvotes: utils.Map(t.Downvote, func(d *Downvote) string { return d.Creator.Wallet }),
+		Upvotes:   utils.Map(t.Upvotes, func(u *Upvote) string { return u.CreatorWallet }),
+		Downvotes: utils.Map(t.Downvotes, func(d *Downvote) string { return d.CreatorWallet }),
 		Assets:    t.Assets,
 		Closed:    t.Closed,
 		CreatedAt: t.CreatedAt,
