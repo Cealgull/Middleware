@@ -256,10 +256,64 @@ func updatePostCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB)
 	}
 }
 
+func queryPostsList(logger *zap.Logger, db *gorm.DB) ChaincodeQuery {
+	return func(c echo.Context) error {
+
+		type QueryRequest struct {
+			PageOrdinal int    `json:"pageOrdinal"`
+			PageSize    int    `json:"pageSize"`
+			BelongTo    string `json:"belongTo"`
+			Creator     string `json:"creator"`
+		}
+
+		q := QueryRequest{}
+
+		if c.Bind(&q) != nil {
+			return c.JSON(chaincodeDeserializationError.Status(), chaincodeDeserializationError.Message())
+		}
+
+		if q.PageOrdinal <= 0 || q.PageSize <= 0 {
+			return c.JSON(chaincodeQueryParameterError.Status(), chaincodeQueryParameterError.Message())
+		}
+
+		posts := []Post{}
+
+		err := db.Transaction(func(tx *gorm.DB) error {
+
+			tx = tx.Model(&Post{}).
+				Scopes(paginate(q.PageOrdinal, q.PageSize))
+
+			if q.Creator != "" {
+				tx = tx.Where("posts.creator_wallet = ?", q.Creator)
+			}
+
+			if q.BelongTo != "" {
+				tx = tx.Joins("JOIN topics ON posts.belong_to_id = topics.id").
+					Where("topics.hash = ?", q.BelongTo)
+			}
+
+			if err := tx.Find(&posts).Error; err != nil {
+				return err
+			}
+
+			return nil
+		})
+
+		if err != nil {
+			return c.JSON(chaincodeInternalError.Status(), chaincodeInternalError.Message())
+		}
+
+		return c.JSON(success.Status(), posts)
+
+	}
+}
+
 func NewPostChaincodeMiddleware(logger *zap.Logger, net common.Network, ipfs *ipfs.IPFSManager, db *gorm.DB) *ChaincodeMiddleware {
 	return NewChaincodeMiddleware(logger, net, net.GetContract("post"),
 
 		WithChaincodeHandler("create", "CreatePost", invokeCreatePost(logger, ipfs, db), createPostCallback(logger, ipfs, db)),
 		WithChaincodeHandler("update", "UpdatePost", invokeUpdatePost(logger, ipfs, db), updatePostCallback(logger, ipfs, db)),
+
+		WithChaincodeQuery("list", queryPostsList(logger, db)),
 	)
 }

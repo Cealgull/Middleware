@@ -507,6 +507,73 @@ func TestUpdatePostCallback(t *testing.T) {
 
 }
 
+func TestQueryPostsList(t *testing.T) {
+	type QueryRequest struct {
+		PageOrdinal int    `json:"pageOrdinal"`
+		PageSize    int    `json:"pageSize"`
+		BelongTo    string `json:"belongTo"`
+		Creator     string `json:"creator"`
+	}
+
+	payload := QueryRequest{
+		PageOrdinal: 1,
+		PageSize:    10,
+		BelongTo:    "topic",
+		Creator:     "0x123456789",
+	}
+
+	t.Run("Query Post List With Unmarshal Error", func(t *testing.T) {
+
+		db := newSqliteDB()
+
+		query := queryPostsList(logger, db)
+
+		req := httptest.NewRequest(http.MethodPost, "/api/post/query/list", bytes.NewReader([]byte{1, 2, 3}))
+		rec := httptest.NewRecorder()
+		c := server.NewContext(req, rec)
+
+		err := query(c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+
+	t.Run("Querying List With Illegal PageOrdinal", func(t *testing.T) {
+
+		db := newSqliteDB()
+
+		query := queryPostsList(logger, db)
+
+		payload.PageOrdinal = -1
+		req := httptest.NewRequest(http.MethodPost, "/api/post/query/list", newJsonRequest(&payload))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+
+		rec := httptest.NewRecorder()
+		c := server.NewContext(req, rec)
+
+		err := query(c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		payload.PageOrdinal = 1
+	})
+
+	t.Run("Querying List With Success", func(t *testing.T) {
+
+		db := newSqliteDB()
+
+		query := queryPostsList(logger, db)
+
+		req := httptest.NewRequest(http.MethodPost, "/api/post/query/list", newJsonRequest(&payload))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+
+		rec := httptest.NewRecorder()
+		c := server.NewContext(req, rec)
+
+		err := query(c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+}
+
 func TestNewPostChaincodeMiddleware(t *testing.T) {
 
 	network := mocks.NewMockNetwork(t)
