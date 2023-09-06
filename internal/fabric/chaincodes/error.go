@@ -96,8 +96,27 @@ func (f *ChaincodeFieldValidationError) Message() *proto.ResponseMessage {
   }
 }
 
+type ChaincodeQueryParameterError struct {}
+
+func (f *ChaincodeQueryParameterError) Error() string {
+  return "Chaincode: Wrong PageOrdinal Or PageSize."
+}
+
+func (f *ChaincodeQueryParameterError) Status() int {
+  return http.StatusBadRequest
+}
+
+func (f *ChaincodeQueryParameterError) Message() *proto.ResponseMessage {
+  return &proto.ResponseMessage{
+    Code:    "C1006",
+    Message: f.Error(),
+  }
+}
+
+
 
 var success *proto.Success = &proto.Success{}
 var chaincodeInternalError *ChaincodeInternalError = &ChaincodeInternalError{}
 var chaincodeDeserializationError *ChaincodeDeserializationError = &ChaincodeDeserializationError{}
 var chaincodeBase64DecodeError *ChaincodeBase64DecodeError = &ChaincodeBase64DecodeError{}
+var chaincodeQueryParameterError *ChaincodeQueryParameterError = &ChaincodeQueryParameterError{}
