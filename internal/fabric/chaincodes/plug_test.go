@@ -125,7 +125,7 @@ func TestCreateTagCallback(t *testing.T) {
 
 	tagBlock := TagBlock{
 		Name:        "testing tag",
-		CreatorID:   1,
+		CreatorWallet:   "0x123456",
 		Description: "This is a testing tag.",
 	}
 
@@ -142,7 +142,7 @@ func TestCreateTagCallback(t *testing.T) {
 
 	t.Run("Creating Tag Callback with user not found", func(t *testing.T) {
 
-		tagBlock.CreatorID = 100
+		tagBlock.CreatorWallet = "100"
 		b, _ := json.Marshal(&tagBlock)
 
 		err := createTag(b)
@@ -153,7 +153,7 @@ func TestCreateTagCallback(t *testing.T) {
 
 	t.Run("Creating Tag Callback with success", func(t *testing.T) {
 
-		tagBlock.CreatorID = 1
+		tagBlock.CreatorWallet = "0x123456"
 
 		b, _ := json.Marshal(&tagBlock)
 
@@ -276,7 +276,7 @@ func TestInvokeCreateCategory(t *testing.T) {
 func TestCreateCategoryCallback(t *testing.T) {
 
 	categoryBlock := CategoryBlock{
-		CategoryGroupID: 1,
+		CategoryGroupName: "test",
 		Color:           1,
 		Name:            "testing category",
 	}
@@ -294,7 +294,7 @@ func TestCreateCategoryCallback(t *testing.T) {
 
 	t.Run("Creating Category Callback with categoryGroup not found", func(t *testing.T) {
 
-		categoryBlock.CategoryGroupID = 100
+		categoryBlock.CategoryGroupName = "test1"
 		b, _ := json.Marshal(&categoryBlock)
 
 		err := createCategory(b)
@@ -305,7 +305,7 @@ func TestCreateCategoryCallback(t *testing.T) {
 
 	t.Run("Creating Category Callback with success", func(t *testing.T) {
 
-		categoryBlock.CategoryGroupID = 1
+    categoryBlock.CategoryGroupName = "test"
 
 		b, _ := json.Marshal(&categoryBlock)
 
