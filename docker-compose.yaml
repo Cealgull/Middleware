@@ -5,6 +5,7 @@ networks:
     external: true
   cealgull_middleware:
     name: "cealgull_middleware"
+
 services:
   postgres:
     image: postgres
@@ -13,12 +14,22 @@ services:
       - POSTGRES_USER=cealgull
       - POSTGRES_DB=cealgull
     hostname: "db.cealgull.middleware"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-d", "cealgull", "-U", "cealgull"]
+      interval: 1s
+      timeout: 30s
+      retries: 30
     networks:
       - cealgull_middleware
 
   ipfs:
     image: ipfs/kubo
     hostname: "ipfs.cealgull.middleware"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "--post-data=''", "localhost:5001/api/v0/version"]
+      interval: 1s
+      timeout: 30s
+      retries: 3
     networks:
       - cealgull_middleware
 
@@ -30,9 +41,10 @@ services:
       - ./configs/config.yaml:/etc/cealgull-middleware/config.yaml:ro
       - ${HOME}/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/users:/etc/cealgull-middleware/crypto
     depends_on:
-      - postgres
-      - ipfs
+      postgres:
+        condition: service_healthy
+      ipfs:
+        condition: service_healthy
     networks:
-      - cealgull_verify
       - cealgull_middleware
       - fabric_test
