@@ -109,12 +109,12 @@ type EmojiRelation struct {
 type EmojiBlock struct {
 	Hash    string `json:"hash"`
 	Creator string `json:"creator"`
-	Code    uint   `json:"code"`
+	Code    string   `json:"code"`
 }
 
 type Emoji struct {
-	ID   uint `gorm:"primaryKey"`
-	Code uint `gorm:"not null"`
+	ID   uint   `gorm:"primaryKey"`
+	Code string `gorm:"not null"`
 }
 
 func (u *Upvote) MarshalJSON() ([]byte, error) {
