@@ -1,6 +1,7 @@
 package offchain
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/Cealgull/Middleware/internal/config"
@@ -34,7 +35,7 @@ func NewPostgresDialector(options ...PostgresOption) gorm.Dialector {
 	return postgres.New(dialector)
 }
 
-func NewOffchainStore(dialector gorm.Dialector) (*gorm.DB, error) {
+func NewOffchainStore(dialector gorm.Dialector, seed bool) (*gorm.DB, error) {
 
 	db, err := gorm.Open(dialector, &gorm.Config{
 		FullSaveAssociations: true,
@@ -69,6 +70,24 @@ func NewOffchainStore(dialector gorm.Dialector) (*gorm.DB, error) {
 		BadgeRelation{},
 	); err != nil {
 		return nil, err
+	}
+
+	if seed {
+		if db.Migrator().HasTable(&Tag{}) {
+			wallet := "wallet"
+			if err := db.First(&User{}).Error; errors.Is(err, gorm.ErrRecordNotFound) {
+				var _ = db.Create(&User{Username: "admin", Wallet: wallet}).Error
+				var _ = db.Create(&Profile{UserWallet: &wallet}).Error
+				var _ = db.Create(&[]Tag{
+					{CreatorWallet: wallet, Name: "tag1"},
+					{CreatorWallet: wallet, Name: "tag2"}}).Error
+				var _ = db.Create(&CategoryGroup{Name: "categoryGroup1", Color: "#D17898",
+					Categories: []*Category{
+						{Name: "category1", Color: "#A2C0BF"},
+						{Name: "category2", Color: "#FA827D"},
+					}}).Error
+			}
+		}
 	}
 
 	return db, err

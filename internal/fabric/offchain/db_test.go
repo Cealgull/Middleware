@@ -20,7 +20,7 @@ func TestNewOffchainStore(t *testing.T) {
 		mockConn, _, _ := sqlmock.New()
 
 		dialector := NewPostgresDialector(WithPostgresConn(mockConn))
-		store, err := NewOffchainStore(dialector)
+		store, err := NewOffchainStore(dialector, false)
 
 		assert.Error(t, err)
 		assert.Nil(t, store)
@@ -32,9 +32,9 @@ func TestNewOffchainStore(t *testing.T) {
     
     dialector := sqlite.Open("file::memory:?cache=shared")
 
-		_, err := NewOffchainStore(dialector)
+		_, err := NewOffchainStore(dialector,false)
 
-		store, err := NewOffchainStore(dialector)
+		store, err := NewOffchainStore(dialector,false)
 
 		assert.NoError(t, err)
 		assert.NotNil(t, store)
@@ -43,7 +43,7 @@ func TestNewOffchainStore(t *testing.T) {
 	t.Run("testing with dsn config", func(t *testing.T) {
 		config := config.PostgresDSNConfig{}
 		dialector := NewPostgresDialector(WithPostgresDSNConfig(&config))
-		var _, err = NewOffchainStore(dialector)
+		var _, err = NewOffchainStore(dialector,false)
 		assert.Error(t, err)
 	})
 }

@@ -31,7 +31,7 @@ func newSqliteDB() *gorm.DB {
 
 	dialector := sqlite.Open("file::memory:")
 
-	db, _ := offchain.NewOffchainStore(dialector)
+	db, _ := offchain.NewOffchainStore(dialector, false)
 
 	if err := db.Exec("PRAGMA foreign_keys = ON", nil).Error; err != nil {
 		panic(err)
