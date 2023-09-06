@@ -70,7 +70,7 @@ type Upvote struct {
 	ID            uint           `gorm:"primaryKey"`
 	CreatedAt     time.Time      `gorm:"autoCreateTime"`
 	DeletedAt     gorm.DeletedAt `gorm:"index"`
-	CreatorWallet string         `gorm:"index:idx_wallet;not null"`
+	CreatorWallet string         `gorm:"index;not null"`
 	Creator       *User          `gorm:"foreignKey:CreatorWallet;references:Wallet"`
 	OwnerID       uint
 	OwnerType     string
@@ -109,7 +109,7 @@ type EmojiRelation struct {
 type EmojiBlock struct {
 	Hash    string `json:"hash"`
 	Creator string `json:"creator"`
-	Code    string   `json:"code"`
+	Code    string `json:"code"`
 }
 
 type Emoji struct {
