@@ -5,6 +5,7 @@ from requests.sessions import RequestsCookieJar
 from dataclasses import dataclass
 import requests
 import base64
+import time
 
 
 @dataclass
@@ -26,11 +27,13 @@ def test_auth_login() -> Credential:
     ).json()["cert"]
     sig = base64.b64encode(priv.sign(cert.encode())).decode()
 
-    requests.post(
+    res = requests.post(
         MIDDLEWARE_HOST + "/api/user/invoke/create",
         headers={"signature": sig},
         json={"cert": cert},
     )
+
+    time.sleep(0.5)
 
     res = requests.post(
         MIDDLEWARE_HOST + "/auth/login",

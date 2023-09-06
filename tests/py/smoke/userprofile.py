@@ -22,7 +22,7 @@ class UserProfileSmokeTest(unittest.TestCase):
             },
         )
 
-        time.sleep(0.1)
+        time.sleep(0.5)
 
         res = request_with_credential(
             self.credential,
@@ -34,3 +34,7 @@ class UserProfileSmokeTest(unittest.TestCase):
         self.assertEqual(res["wallet"], self.credential.wallet)
         self.assertEqual(res["avatar"], "0xsaadfwadf")
         self.assertEqual(res["signature"], "Genshin Impact is a good game")
+
+
+if __name__ == "__main__":
+    unittest.main()
