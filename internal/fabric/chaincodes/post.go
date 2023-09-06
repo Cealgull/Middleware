@@ -100,7 +100,11 @@ func invokeCreatePost(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) C
 			return c.JSON(chaincodeInvokeFailure.Status(), chaincodeInvokeFailure.Message())
 		}
 
-		return c.JSON(success.Status(), success.Message())
+		type PostResponse struct {
+			Hash string `json:"hash"`
+		}
+
+		return c.JSON(success.Status(), &PostResponse{Hash: hash})
 	}
 }
 
@@ -170,7 +174,7 @@ func invokeUpdatePost(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) C
 		type ChangePostRequest struct {
 			Hash    string   `json:"hash"`
 			Content string   `json:"content"`
-			Assets  []string `json:"assets"`
+			Images  []string `json:"images"`
 		}
 
 		postRequest := ChangePostRequest{}
@@ -191,9 +195,9 @@ func invokeUpdatePost(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) C
 			return c.JSON(err.Status(), err.Message())
 		}
 
-		images := make([]string, len(postRequest.Assets))
+		images := make([]string, len(postRequest.Images))
 
-		for i, imageb64 := range postRequest.Assets {
+		for i, imageb64 := range postRequest.Images {
 
 			data, err := base64.StdEncoding.DecodeString(imageb64)
 
@@ -233,31 +237,35 @@ func updatePostCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB)
 
 		var _ = json.Unmarshal(payload, &postChanged)
 
-		post := Post{}
-		if err := db.Model(&Post{}).
-			Where("hash = ?", postChanged.Hash).First(&post).Error; err != nil {
-			return err
-		}
-
 		data, err := ipfs.Cat(postChanged.CID)
+
 		if err != nil {
 			return err
 		}
 
 		assets := utils.Map(postChanged.Assets, func(image string) *Asset {
 			return &Asset{
-				CreatorWallet: post.CreatorWallet,
+				CreatorWallet: postChanged.Creator,
 				CID:           image,
 				ContentType:   "image/jpeg",
 			}
 		})
 
+		post := Post{}
+
 		var _ = assets
 
 		return db.Transaction(func(tx *gorm.DB) error {
-			tx.Model(&post).Select("content", "assets").Updates(map[string]interface{}{"content": string(data), "assets": assets})
 
-			return nil
+			if err := tx.Model(&Post{}).
+				Where("hash = ?", postChanged.Hash).First(&post).Error; err != nil {
+				return err
+			}
+
+      return tx.Model(&post).
+        Session(&gorm.Session{FullSaveAssociations: true}).
+        Updates(&Post{Content: string(data), Assets: assets}).Error
+
 		})
 	}
 }
@@ -287,15 +295,18 @@ func queryPostsList(logger *zap.Logger, db *gorm.DB) ChaincodeQuery {
 		err := db.Transaction(func(tx *gorm.DB) error {
 
 			tx = tx.Model(&Post{}).
+				Preload("ReplyTo").
+				Preload("ReplyTo.Creator").
+				Preload("ReplyTo.Assets").
 				Scopes(paginate(q.PageOrdinal, q.PageSize))
 
 			if q.Creator != "" {
-				tx = tx.Where("posts.creator_wallet = ?", q.Creator)
+				tx = tx.Where("creator_wallet = ?", q.Creator)
 			}
 
 			if q.BelongTo != "" {
-				tx = tx.Joins("JOIN topics ON posts.belong_to_id = topics.id").
-					Where("topics.hash = ?", q.BelongTo)
+				tx = tx.
+					Where("belong_to_hash = ?", q.BelongTo)
 			}
 
 			if err := tx.Find(&posts).Error; err != nil {
