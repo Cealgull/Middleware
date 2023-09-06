@@ -39,10 +39,12 @@ func invokeCreatePost(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) C
 
 		replyPost := Post{}
 
-		if err := db.Model(&Post{}).
-			Where("hash = ?", postRequest.ReplyTo).First(&replyPost).Error; err != nil {
-			chaincodeFieldValidationError := ChaincodeFieldValidationError{"replyTo"}
-			return c.JSON(chaincodeFieldValidationError.Status(), chaincodeFieldValidationError.Message())
+		if postRequest.ReplyTo != "" {
+			if err := db.Model(&Post{}).
+				Where("hash = ?", postRequest.ReplyTo).First(&replyPost).Error; err != nil {
+				chaincodeFieldValidationError := ChaincodeFieldValidationError{"replyTo"}
+				return c.JSON(chaincodeFieldValidationError.Status(), chaincodeFieldValidationError.Message())
+			}
 		}
 
 		belongTopic := Topic{}
