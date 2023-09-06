@@ -22,15 +22,15 @@ type TopicBlock struct {
 
 type Topic struct {
 	ID               uint   `gorm:"primaryKey"`
-	Hash             string `gorm:"not null"`
+	Hash             string `gorm:"uniqueIndex;not null"`
 	Title            string `gorm:"not null"`
-	CreatorWallet    string `gorm:"not null"`
+	CreatorWallet    string `gorm:"index;not null"`
 	Creator          *User  `gorm:"references:Wallet"`
 	Content          string `gorm:"not null"`
 	CategoryAssigned *CategoryRelation
 	TagsAssigned     []*TagRelation `gorm:"polymorphic:Owner"`
 	Upvotes          []*Upvote      `gorm:"polymorphic:Owner"`
-	Downvotes         []*Downvote    `gorm:"polymorphic:Owner"`
+	Downvotes        []*Downvote    `gorm:"polymorphic:Owner"`
 	Assets           []*Asset       `gorm:"polymorphic:Owner"`
 	Closed           bool           `gorm:"not null"`
 
