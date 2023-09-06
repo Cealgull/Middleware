@@ -3,6 +3,7 @@ package chaincodes
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/Cealgull/Middleware/internal/fabric/common"
@@ -54,7 +55,7 @@ func invokeUpdateUser(logger *zap.Logger, db *gorm.DB) ChaincodeInvoke {
 
 		type ProfileChanged struct {
 			Username  string `json:"username"`
-			Wallet    string `json:"-"`
+      Wallet    string `json:"wallet"`
 			Avatar    string `json:"avatar"`
 			Signature string `json:"signature"`
 
@@ -62,11 +63,12 @@ func invokeUpdateUser(logger *zap.Logger, db *gorm.DB) ChaincodeInvoke {
 			ActiveBadge uint `json:"activeBadge"`
 		}
 
-		profile := ProfileChanged{}
+    profile := ProfileChanged{}
 
 		if err := c.Bind(&profile); err != nil {
 			return c.JSON(chaincodeDeserializationError.Status(), chaincodeDeserializationError.Message())
 		}
+
 
 		s, _ := session.Get("session", c)
 
@@ -84,8 +86,8 @@ func invokeUpdateUser(logger *zap.Logger, db *gorm.DB) ChaincodeInvoke {
 			if !utils.Contains(utils.Map(userProfile.RoleRelationsAssigned, func(r *RoleRelation) uint {
 				return r.RoleID
 			}), profile.ActiveRole) || !utils.Contains(utils.Map(userProfile.BadgeRelationsReceived, func(r *BadgeRelation) uint {
-        return r.BadgeID
-      }), profile.ActiveBadge) {
+				return r.BadgeID
+			}), profile.ActiveBadge) {
 				return errors.New("User does not have the role or badge")
 			}
 			return nil
@@ -169,12 +171,13 @@ func updateUserCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallback 
 				Username: profileChanged.Username,
 				Avatar:   profileChanged.Avatar,
 			}
+      
+      fmt.Println(user)
 
 			profile := Profile{
 				Signature:   profileChanged.Signature,
 				Credibility: profileChanged.Credibility,
 				Balance:     profileChanged.Balance,
-				User:        &user,
 			}
 
 			prevProfile := Profile{}
@@ -183,8 +186,12 @@ func updateUserCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallback 
 				Where("user_wallet = ?", profileChanged.Wallet).First(&prevProfile).Error; err != nil {
 				return err
 			}
+      
+      profile.ID = prevProfile.ID
+      user.ID = prevProfile.User.ID
 
-			var _ = tx.Model(&prevProfile).Updates(&profile).Error
+			var _ = tx.Updates(&profile).Error
+      var _ = tx.Updates(&user).Error
 
 			if profileChanged.ActiveBadge != 0 {
 				if err := tx.Model(prevProfile.User).Association("ActiveBadgeRelation").
