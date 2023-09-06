@@ -14,6 +14,7 @@ type PostgresDSNConfig struct {
 	Port int    `yaml:"port"`
 	User string `yaml:"user"`
 	Name string `yaml:"name"`
+	Seed bool   `yaml:"seed"`
 }
 
 type IPFSConfig struct {
