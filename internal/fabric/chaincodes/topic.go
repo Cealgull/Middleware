@@ -39,6 +39,10 @@ func invokeCreateTopic(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) 
 			return c.JSON(chaincodeDeserializationError.Status(), chaincodeDeserializationError.Message())
 		}
 
+		if err := validate(db, []Category{}, []string{topicRequest.Category}); err != nil {
+			return c.JSON(err.Status(), err.Message())
+		}
+
 		if err := validate(db, []Tag{}, topicRequest.Tags); err != nil {
 			return c.JSON(err.Status(), err.Message())
 		}
@@ -151,14 +155,21 @@ func createTopicCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB
 func invokeUpdateTopic(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) ChaincodeInvoke {
 	return func(contract common.Contract, c echo.Context) error {
 		type ChangeTopicRequest struct {
-			Hash    string   `json:"hash"`
-			Content string   `json:"content"`
-			Assets  []string `json:"assets"`
+			Hash     string   `json:"hash"`
+			Content  string   `json:"content"`
+			Images   []string `json:"images"`
+			Title    string   `json:"title"`
+			Category string   `json:"category"`
+			Tags     []string `json:"tags"`
 		}
 
 		topicRequest := ChangeTopicRequest{}
 		if err := c.Bind(&topicRequest); err != nil {
 			return c.JSON(chaincodeDeserializationError.Status(), chaincodeDeserializationError.Message())
+		}
+
+		if err := validate(db, []Category{}, []string{topicRequest.Category}); err != nil {
+			return c.JSON(err.Status(), err.Message())
 		}
 
 		topic := Topic{}
@@ -173,9 +184,9 @@ func invokeUpdateTopic(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) 
 			return c.JSON(err.Status(), err.Message())
 		}
 
-		images := make([]string, len(topicRequest.Assets))
+		images := make([]string, len(topicRequest.Images))
 
-		for i, imageb64 := range topicRequest.Assets {
+		for i, imageb64 := range topicRequest.Images {
 
 			data, err := base64.StdEncoding.DecodeString(imageb64)
 
@@ -191,9 +202,11 @@ func invokeUpdateTopic(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) 
 		}
 
 		topicBlock := TopicBlock{
-			Hash:   topicRequest.Hash,
-			CID:    CID,
-			Images: images,
+			Hash:     topicRequest.Hash,
+			CID:      CID,
+			Images:   images,
+			Category: topicRequest.Category,
+			Tags:     topicRequest.Tags,
 		}
 
 		b, _ := json.Marshal(&topicBlock)
@@ -215,31 +228,41 @@ func updateTopicCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB
 
 		var _ = json.Unmarshal(payload, &topicChanged)
 
-		topic := Topic{}
-		if err := db.Model(&Topic{}).
-			Where("hash = ?", topicChanged.Hash).First(&topic).Error; err != nil {
-			return err
-		}
-
 		data, err := ipfs.Cat(topicChanged.CID)
 		if err != nil {
 			return err
 		}
 
-		images := utils.Map(topicChanged.Images, func(image string) *Asset {
+		assets := utils.Map(topicChanged.Images, func(image string) *Asset {
 			return &Asset{
-				CreatorWallet: topic.CreatorWallet,
+				CreatorWallet: topicChanged.Creator,
 				CID:           image,
 				ContentType:   "image/jpeg",
 			}
 		})
 
-		var _ = images
+    tagsAssigned := utils.Map(topicChanged.Tags, func(t string) *TagRelation {
+      return &TagRelation{
+        TagName: t,
+      }
+    })
+    
+		topic := Topic{}
 
 		return db.Transaction(func(tx *gorm.DB) error {
-			tx.Model(&topic).Select("content", "update_at", "images").Updates(map[string]interface{}{"content": string(data), "images": images})
 
-			return nil
+			if err := db.Model(&Topic{}).
+				Where("hash = ?", topicChanged.Hash).First(&topic).Error; err != nil {
+				return err
+			}
+
+			return tx.Model(&topic).
+        Updates(&Topic{Title: topicChanged.Title,
+          Content: string(data),
+          TagsAssigned: tagsAssigned,
+          CategoryAssigned: &CategoryRelation{CategoryName: topicChanged.Category},
+          Assets: assets}).Error
+
 		})
 	}
 }
@@ -258,7 +281,7 @@ func invokeUpvoteTopic(logger *zap.Logger, db *gorm.DB) ChaincodeInvoke {
 		topic := Topic{}
 		if err := db.Model(&Topic{}).
 			Where("hash = ?", upvoteRequest.Hash).First(&topic).Error; err != nil {
-      return err
+			return err
 		}
 
 		s, _ := session.Get("session", c)
@@ -420,50 +443,48 @@ func queryTopicsList(logger *zap.Logger, db *gorm.DB) ChaincodeQuery {
 		q := QueryRequest{}
 
 		if c.Bind(&q) != nil {
-      return c.JSON(chaincodeDeserializationError.Status(), chaincodeDeserializationError.Message())
+			return c.JSON(chaincodeDeserializationError.Status(), chaincodeDeserializationError.Message())
 		}
-    
-    if q.PageOrdinal <= 0 || q.PageSize <= 0{
-      return c.JSON(chaincodeQueryParameterError.Status(), chaincodeQueryParameterError.Message())
-    }
 
+		if q.PageOrdinal <= 0 || q.PageSize <= 0 {
+			return c.JSON(chaincodeQueryParameterError.Status(), chaincodeQueryParameterError.Message())
+		}
 
-    topics := []Topic{}
+		topics := []Topic{}
 
 		err := db.Transaction(func(tx *gorm.DB) error {
 
-      tx = tx.Model(&Topic{}).
-      Preload("CategoryAssigned").
-      Preload("TagsAssigned").
-      Preload("Upvotes").
-      Preload("Downvotes").
-      Scopes(paginate(q.PageOrdinal, q.PageSize))
-      
-      if q.Creator != "" {
-        tx = tx.Where("creator_wallet = ?", q.Creator)
-      }
+			tx = tx.Model(&Topic{})
+			if q.Creator != "" {
+				tx = tx.Where("creator_wallet = ?", q.Creator)
+			}
 
-      if q.Category != "" { 
-        subquery := db.Select("TopicID").Model(&CategoryRelation{}).Where("category_name = ?", q.Category)
-        tx = tx.Joins("inner join (?) as t1 on t1.topic_id = topics.id", subquery)
-      }
+			if q.Category != "" {
+				subquery := db.Select("TopicID").Model(&CategoryRelation{}).Where("category_name = ?", q.Category)
+				tx = tx.Joins("inner join (?) as t1 on t1.topic_id = topics.id", subquery)
+			}
 
-      if len(q.Tags) != 0 {
-        subquery := db.Select("OwnerID").Model(&TagRelation{}).Where("tag_name IN ?", q.Tags)
-        tx = tx.InnerJoins("inner join (?) as t2 on t2.owner_id = topics.id", subquery)
-      }
+			if len(q.Tags) != 0 {
+				subquery := db.Select("OwnerID").Model(&TagRelation{}).Where("tag_name IN ?", q.Tags)
+				tx = tx.InnerJoins("inner join (?) as t2 on t2.owner_id = topics.id", subquery)
+			}
 
+			tx = tx.Preload("CategoryAssigned").
+				Preload("TagsAssigned").
+				Preload("Upvotes").
+				Preload("Downvotes").
+				Scopes(paginate(q.PageOrdinal, q.PageSize))
 
-      if err := tx.Find(&topics).Error; err != nil {
-        return err
-      }
+			if err := tx.Find(&topics).Error; err != nil {
+				return err
+			}
 
-      return nil
+			return nil
 		})
 
-    if err != nil {
-      return c.JSON(chaincodeInternalError.Status(), chaincodeInternalError.Message())
-    }
+		if err != nil {
+			return c.JSON(chaincodeInternalError.Status(), chaincodeInternalError.Message())
+		}
 
 		return c.JSON(success.Status(), topics)
 
@@ -481,6 +502,6 @@ func NewTopicChaincodeMiddleware(logger *zap.Logger, net common.Network, ipfs *i
 
 		WithChaincodeQuery("categories", queryCategories(logger, db)),
 		WithChaincodeQuery("tags", queryTags(logger, db)),
-    WithChaincodeQuery("list", queryTopicsList(logger, db)),
+		WithChaincodeQuery("list", queryTopicsList(logger, db)),
 	)
 }
