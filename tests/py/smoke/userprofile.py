@@ -9,10 +9,10 @@ import time
 class UserProfileSmokeTest(unittest.TestCase):
     def setUp(self):
         self.credential = test_auth_login()
+        self.request = get_request_handler(self.credential)
 
     def test_0001_update_user(self):
-        res = request_with_credential(
-            self.credential,
+        res = self.request(
             "/api/user/invoke/update",
             {
                 "username": "alice_exp",
@@ -24,8 +24,7 @@ class UserProfileSmokeTest(unittest.TestCase):
 
         time.sleep(0.5)
 
-        res = request_with_credential(
-            self.credential,
+        res = self.request(
             "/api/user/query/profile",
             {"wallet": self.credential.wallet},
         )

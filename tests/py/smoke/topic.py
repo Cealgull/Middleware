@@ -10,15 +10,16 @@ class TopicTestCase(unittest.TestCase):
         num = random.randint(0, 10000000)
 
         self.credential = test_auth_login()
+        self.request = get_request_handler(self.credential)
 
-        res = request_with_credential(
-            self.credential,
+        self.request(
             "/api/categoryGroup/invoke/create",
             {"name": "testGroup" + str(num), "color": 123},
         )
 
-        request_with_credential(
-            self.credential,
+        time.sleep(0.5)
+
+        self.request(
             "/api/category/invoke/create",
             {
                 "categoryGroup": "testGroup" + str(num),
@@ -27,17 +28,19 @@ class TopicTestCase(unittest.TestCase):
             },
         )
 
-        request_with_credential(
-            self.credential,
+        time.sleep(0.5)
+
+        self.request(
             "/api/tag/invoke/create",
             {"name": "testTag" + str(num), "color": 123},
         )
 
+        time.sleep(0.5)
+
         self.num = num
 
     def test_0001_create_topic(self):
-        res = request_with_credential(
-            self.credential,
+        res = self.request(
             "/api/topic/invoke/create",
             {
                 "title": "test",
@@ -49,8 +52,7 @@ class TopicTestCase(unittest.TestCase):
         )
         time.sleep(0.5)
 
-        res = request_with_credential(
-            self.credential,
+        res = self.request(
             "/api/topic/invoke/upvote",
             {
                 "hash": res["hash"],
@@ -61,8 +63,7 @@ class TopicTestCase(unittest.TestCase):
 
         time.sleep(0.5)
 
-        res = request_with_credential(
-            self.credential,
+        res = self.request(
             "/api/topic/query/list",
             {
                 "pageOrdinal": 1,
@@ -72,5 +73,3 @@ class TopicTestCase(unittest.TestCase):
                 "creator": self.credential.wallet,
             },
         )
-
-        print(res)
