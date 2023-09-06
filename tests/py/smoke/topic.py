@@ -52,14 +52,12 @@ class TopicTestCase(unittest.TestCase):
         )
         time.sleep(0.5)
 
+        hash = res["hash"]
+
         res = self.request(
             "/api/topic/invoke/upvote",
-            {
-                "hash": res["hash"],
-            },
+            {"hash": hash},
         )
-
-        print(res)
 
         time.sleep(0.5)
 
@@ -71,5 +69,19 @@ class TopicTestCase(unittest.TestCase):
                 "category": "testCategory" + str(self.num),
                 "tags": ["testTag" + str(self.num)],
                 "creator": self.credential.wallet,
+            },
+        )
+
+        self.assertEqual(len(res), 1)
+
+        time.sleep(0.5)
+
+        res = self.request(
+            "/api/topic/invoke/update",
+            {
+                "hash": hash,
+                "title": "test2",
+                "images": [],
+                "content": "test2",
             },
         )
