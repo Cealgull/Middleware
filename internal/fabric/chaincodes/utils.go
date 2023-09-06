@@ -7,13 +7,13 @@ import (
 	"gorm.io/gorm"
 )
 
-func validate(db *gorm.DB, models interface{}, ids []uint) proto.MiddlewareError {
+func validate(db *gorm.DB, models interface{}, names []string) proto.MiddlewareError {
 
-	if len(ids) == 0 {
+	if len(names) == 0 {
 		return nil
 	}
 
-	if err := db.Find(&models, ids).Error; reflect.ValueOf(models).Len() != len(ids) || err != nil {
+	if err := db.Where("name IN ?", names).Find(&models).Error; reflect.ValueOf(models).Len() != len(names) || err != nil {
 		name := reflect.TypeOf(models).Elem().Name()
 		chaincodeFieldValidationError := &ChaincodeFieldValidationError{name}
 		return chaincodeFieldValidationError
