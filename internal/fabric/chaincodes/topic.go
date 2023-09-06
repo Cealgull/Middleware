@@ -89,7 +89,11 @@ func invokeCreateTopic(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) 
 			return c.JSON(chaincodeInvokeFailure.Status(), chaincodeInvokeFailure.Message())
 		}
 
-		return c.JSON(success.Status(), success.Message())
+		type TopicResponse struct {
+			Hash string `json:"hash"`
+		}
+
+		return c.JSON(success.Status(), &TopicResponse{Hash: hash})
 	}
 }
 
@@ -111,7 +115,7 @@ func createTopicCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB
 
 		tagsAssigned := utils.Map(topicBlock.Tags, func(t string) *TagRelation {
 			return &TagRelation{
-        TagName: t,
+				TagName: t,
 			}
 		})
 
@@ -244,7 +248,6 @@ func invokeUpvoteTopic(logger *zap.Logger, db *gorm.DB) ChaincodeInvoke {
 	return func(contract common.Contract, c echo.Context) error {
 		type UpvoteRequest struct {
 			Hash string `json:"hash"`
-			Type string `json:"type"`
 		}
 
 		upvoteRequest := UpvoteRequest{}
@@ -255,7 +258,7 @@ func invokeUpvoteTopic(logger *zap.Logger, db *gorm.DB) ChaincodeInvoke {
 		topic := Topic{}
 		if err := db.Model(&Topic{}).
 			Where("hash = ?", upvoteRequest.Hash).First(&topic).Error; err != nil {
-			return err
+      return err
 		}
 
 		s, _ := session.Get("session", c)
@@ -277,6 +280,7 @@ func invokeUpvoteTopic(logger *zap.Logger, db *gorm.DB) ChaincodeInvoke {
 	}
 }
 
+// FIXME: WE NEED TO UNDO DOWNVOTE IF UPVOTED?
 func upvoteTopicCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallback {
 
 	return func(payload []byte) error {
@@ -286,17 +290,24 @@ func upvoteTopicCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallback
 		var _ = json.Unmarshal(payload, &upvoteBlock)
 
 		topic := Topic{}
+
 		if err := db.Model(&Topic{}).
+			Preload("Upvotes").
 			Where("hash = ?", upvoteBlock.Hash).First(&topic).Error; err != nil {
 			return err
 		}
 
-
 		return db.Transaction(func(tx *gorm.DB) error {
+
 			upvote := Upvote{
-        CreatorWallet:  upvoteBlock.Creator,
-				OwnerID:   topic.ID,
-				OwnerType: "Topic",
+				CreatorWallet: upvoteBlock.Creator,
+			}
+
+			for _, u := range topic.Upvotes {
+				if u.CreatorWallet == upvote.CreatorWallet {
+					tx.Model(&topic).Association("Upvotes").Delete(u)
+					return nil
+				}
 			}
 
 			var _ = tx.Model(&topic).Association("Upvotes").Append(&upvote)
@@ -306,11 +317,11 @@ func upvoteTopicCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallback
 	}
 }
 
+// FIXME: WE NEED TO UNDO UPVOTE IF DOWNVOTED?
 func invokeDownvoteTopic(logger *zap.Logger, db *gorm.DB) ChaincodeInvoke {
 	return func(contract common.Contract, c echo.Context) error {
 		type DownvoteRequest struct {
 			Hash string `json:"hash"`
-			Type string `json:"type"`
 		}
 
 		downvoteRequest := DownvoteRequest{}
@@ -352,26 +363,26 @@ func downvoteTopicCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallba
 		var _ = json.Unmarshal(payload, &downvoteBlock)
 
 		topic := Topic{}
+
 		if err := db.Model(&Topic{}).
+			Preload("Downvotes").
 			Where("hash = ?", downvoteBlock.Hash).First(&topic).Error; err != nil {
 			return err
 		}
 
-		user := User{}
-		if err := db.Model(&User{}).
-			Where("wallet = ?", downvoteBlock.Creator).First(&user).Error; err != nil {
-			return err
-		}
-
 		return db.Transaction(func(tx *gorm.DB) error {
+
 			downvote := Downvote{
-				Creator:   &user,
-				OwnerID:   topic.ID,
-				OwnerType: "Topic",
+				CreatorWallet: downvoteBlock.Creator,
 			}
 
+			for _, d := range topic.Upvotes {
+				if d.CreatorWallet == downvote.CreatorWallet {
+					tx.Model(&topic).Association("Downvotes").Delete(d)
+					return nil
+				}
+			}
 			var _ = tx.Model(&topic).Association("Downvotes").Append(&downvote)
-
 			return nil
 		})
 	}
@@ -395,6 +406,70 @@ func queryTags(logger *zap.Logger, db *gorm.DB) ChaincodeQuery {
 	}
 }
 
+func queryTopicsList(logger *zap.Logger, db *gorm.DB) ChaincodeQuery {
+	return func(c echo.Context) error {
+
+		type QueryRequest struct {
+			PageOrdinal int      `json:"pageOrdinal"`
+			PageSize    int      `json:"pageSize"`
+			Category    string   `json:"category"`
+			Creator     string   `json:"creator"`
+			Tags        []string `json:"tags"`
+		}
+
+		q := QueryRequest{}
+
+		if c.Bind(&q) != nil {
+      return c.JSON(chaincodeDeserializationError.Status(), chaincodeDeserializationError.Message())
+		}
+    
+    if q.PageOrdinal <= 0 || q.PageSize <= 0{
+      return c.JSON(chaincodeQueryParameterError.Status(), chaincodeQueryParameterError.Message())
+    }
+
+
+    topics := []Topic{}
+
+		err := db.Transaction(func(tx *gorm.DB) error {
+
+      tx = tx.Model(&Topic{}).
+      Preload("CategoryAssigned").
+      Preload("TagsAssigned").
+      Preload("Upvotes").
+      Preload("Downvotes").
+      Scopes(paginate(q.PageOrdinal, q.PageSize))
+      
+      if q.Creator != "" {
+        tx = tx.Where("creator_wallet = ?", q.Creator)
+      }
+
+      if q.Category != "" { 
+        subquery := db.Select("TopicID").Model(&CategoryRelation{}).Where("category_name = ?", q.Category)
+        tx = tx.Joins("inner join (?) as t1 on t1.topic_id = topics.id", subquery)
+      }
+
+      if len(q.Tags) != 0 {
+        subquery := db.Select("OwnerID").Model(&TagRelation{}).Where("tag_name IN ?", q.Tags)
+        tx = tx.InnerJoins("inner join (?) as t2 on t2.owner_id = topics.id", subquery)
+      }
+
+
+      if err := tx.Find(&topics).Error; err != nil {
+        return err
+      }
+
+      return nil
+		})
+
+    if err != nil {
+      return c.JSON(chaincodeInternalError.Status(), chaincodeInternalError.Message())
+    }
+
+		return c.JSON(success.Status(), topics)
+
+	}
+}
+
 func NewTopicChaincodeMiddleware(logger *zap.Logger, net common.Network, ipfs *ipfs.IPFSManager, db *gorm.DB) *ChaincodeMiddleware {
 	return NewChaincodeMiddleware(logger, net, net.GetContract("topic"),
 
@@ -406,5 +481,6 @@ func NewTopicChaincodeMiddleware(logger *zap.Logger, net common.Network, ipfs *i
 
 		WithChaincodeQuery("categories", queryCategories(logger, db)),
 		WithChaincodeQuery("tags", queryTags(logger, db)),
+    WithChaincodeQuery("list", queryTopicsList(logger, db)),
 	)
 }
