@@ -14,7 +14,7 @@ class TopicTestCase(unittest.TestCase):
 
         self.request(
             "/api/categoryGroup/invoke/create",
-            {"name": "testGroup" + str(num), "color": 123},
+            {"name": "testGroup" + str(num), "color": "123"},
         )
 
         time.sleep(0.5)
@@ -24,7 +24,7 @@ class TopicTestCase(unittest.TestCase):
             {
                 "categoryGroup": "testGroup" + str(num),
                 "name": "testCategory" + str(num),
-                "color": 123,
+                "color": "123",
             },
         )
 
@@ -32,7 +32,7 @@ class TopicTestCase(unittest.TestCase):
 
         self.request(
             "/api/tag/invoke/create",
-            {"name": "testTag" + str(num), "color": 123},
+            {"name": "testTag" + str(num), "color": "123"},
         )
 
         time.sleep(0.5)
