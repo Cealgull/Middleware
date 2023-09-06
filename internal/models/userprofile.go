@@ -13,7 +13,7 @@ type Profile struct {
 	Signature              string
 	Credibility            uint
 	Balance                int
-	UserWallet             *string
+	UserWallet             *string          `gorm:"index:,unique,sort:desc,not null"`
 	User                   *User            `gorm:"references:Wallet"`
 	RoleRelationsAssigned  []*RoleRelation  `gorm:"polymorphic:Owner"`
 	BadgeRelationsReceived []*BadgeRelation `gorm:"polymorphic:Owner"`
@@ -48,6 +48,7 @@ func (p *Profile) MarshalJSON() ([]byte, error) {
 	}{
 
 		Username:  p.User.Username,
+		Avatar:    p.User.Avatar,
 		Wallet:    p.User.Wallet,
 		Signature: p.Signature,
 		Muted:     p.User.Muted,
@@ -102,7 +103,7 @@ func (p *Profile) MarshalJSON() ([]byte, error) {
 type User struct {
 	gorm.Model
 	Username string `gorm:"not null"`
-	Wallet   string `gorm:"index:,unique,not null"`
+	Wallet   string `gorm:"index:,unique,sort:desc,not null"`
 	Avatar   string
 	Muted    bool `gorm:"not null"`
 	Banned   bool `gorm:"not null"`
