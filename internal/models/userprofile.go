@@ -151,31 +151,31 @@ type ProfileBlock struct {
 	Balance     int  `json:"balance"`
 	Credibility uint `json:"credibility"`
 
-	ActiveRole     uint   `json:"activeRole"`
-	RolesAssigned  []uint `json:"rolesAssigned"`
-	ActiveBadge    uint   `json:"activeBadge"`
-	BadgesReceived []uint `json:"badgesReceived"`
+	ActiveRole     string   `json:"activeRole"`
+	RolesAssigned  []string `json:"rolesAssigned"`
+	ActiveBadge    string   `json:"activeBadge"`
+	BadgesReceived []string `json:"badgesReceived"`
 }
 
 type RoleRelation struct {
 	ID        uint   `gorm:"primaryKey"`
 	OwnerID   uint   `gorm:"not null"`
 	OwnerType string `gorm:"not null"`
-	RoleID    uint
-	Role      *Role
+	RoleName  string
+	Role      *Role `gorm:"foreignKey:RoleName;references:Name"`
 }
 
 type BadgeRelation struct {
 	ID        uint   `gorm:"primaryKey"`
 	OwnerID   uint   `gorm:"not null"`
 	OwnerType string `gorm:"not null"`
-	BadgeID   uint
-	Badge     *Badge
+	BadgeName string
+	Badge     *Badge `gorm:"foreignKey:BadgeName;references:Name"`
 }
 
 type Role struct {
 	ID          uint   `gorm:"primaryKey" json:"-"`
-	Name        string `json:"name"`
+	Name        string `gorm:"uniqueIndex" json:"name"`
 	Description string `json:"description"`
 	Privilege   uint   `json:"priledge"`
 }
@@ -183,6 +183,6 @@ type Role struct {
 type Badge struct {
 	ID          uint   `gorm:"primaryKey" json:"-"`
 	CID         string `json:"cid"`
-	Name        string `json:"name"`
+	Name        string `gorm:"uniqueIndex" json:"name"`
 	Description string `json:"description"`
 }

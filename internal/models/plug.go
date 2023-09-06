@@ -8,72 +8,72 @@ import (
 )
 
 type Tag struct {
-	ID          uint   `gorm:"primaryKey" json:"-"`
-	Name        string `gorm:"not null"   json:"name"`
-	CreatorID   uint   `gorm:"not null"`
-	Creator     *User
-	Description string `json:"description"`
+	ID            uint   `gorm:"primaryKey" json:"-"`
+	Name          string `gorm:"uniqueIndex;not null"   json:"name"`
+	CreatorWallet string `gorm:"not null"`
+	Creator       *User  `gorm:"foreignKey:CreatorWallet;references:Wallet"`
+	Description   string `json:"description"`
 }
 
 type TagBlock struct {
-	Name        string `json:"name"`
-	CreatorID   uint   `json:"creatorID"`
-	Description string `json:"description"`
+	Name          string `json:"name"`
+	CreatorWallet string `json:"creatorWallet"`
+	Description   string `json:"description"`
 }
 
 type TagRelation struct {
 	ID        uint   `gorm:"primaryKey"`
 	OwnerID   uint   `gorm:"not null"`
 	OwnerType string `gorm:"not null"`
-	TagID     uint   `gorm:"not null"`
-	Tag       *Tag
+	TagName   string `gorm:"not null"`
+	Tag       *Tag   `gorm:"foreignKey:TagName;references:Name"`
 }
 
 type Category struct {
-	ID              uint   `gorm:"primaryKey"`
-	CategoryGroupID uint   `gorm:"not null"`
-	Color           uint   `gorm:"not null"`
-	Name            string `gorm:"not null"`
+	ID                uint   `gorm:"primaryKey"`
+	CategoryGroupName string `gorm:"not null"`
+	Color             uint   `gorm:"not null"`
+	Name              string `gorm:"uniqueIndex;not null"`
 }
 
 type CategoryBlock struct {
-	CategoryGroupID uint   `json:"categoryGroupID"`
-	Color           uint   `json:"color"`
-	Name            string `json:"name"`
+	CategoryGroupName string `json:"categoryGroupName"`
+	Color             uint   `json:"color"`
+	Name              string `json:"name"`
 }
 
 type CategoryRelation struct {
-	ID         uint `gorm:"primaryKey"`
-	TopicID    uint `gorm:"not null"`
-	CategoryID uint `gorm:"not null"`
-	Category   *Category
-	CreatedAt  time.Time      `gorm:"autoCreateTime"`
-	DeletedAt  gorm.DeletedAt `gorm:"index"`
+	ID           uint           `gorm:"primaryKey"`
+	TopicID      uint           `gorm:"not null"`
+	CategoryName string         `gorm:"not null"`
+	Category     *Category      `gorm:"foreignKey:CategoryName;references:Name"`
+	CreatedAt    time.Time      `gorm:"autoCreateTime"`
+	DeletedAt    gorm.DeletedAt `gorm:"index"`
 }
 
 type CategoryGroup struct {
-	ID         uint   `gorm:"primaryKey"`
-	Name       string `gorm:"not null"`
-	Color      uint   `gorm:"not null"`
-	Categories []*Category
+	ID         uint           `gorm:"primaryKey"`
+	Name       string         `gorm:"uniqueIndex;not null"`
+	Color      uint           `gorm:"not null"`
+	Categories []*Category    `gorm:"foreignKey:CategoryGroupName;references:Name"`
 	CreatedAt  time.Time      `gorm:"autoCreateTime"`
 	DeletedAt  gorm.DeletedAt `gorm:"index"`
 }
 
 type CategoryGroupBlock struct {
-	Name       string `json:"name"`
-	Color      uint   `json:"color"`
-	Categories []uint `json:"categories"`
+	Name       string   `json:"name"`
+	Color      uint     `json:"color"`
+	Categories []string `json:"categories"`
 }
 
 type Upvote struct {
-	ID        uint           `gorm:"primaryKey"`
-	CreatedAt time.Time      `gorm:"autoCreateTime"`
-	DeletedAt gorm.DeletedAt `gorm:"index"`
-	CreatorID uint           `gorm:"not null"`
-	Creator   *User
-	OwnerID   uint
-	OwnerType string
+	ID            uint           `gorm:"primaryKey"`
+	CreatedAt     time.Time      `gorm:"autoCreateTime"`
+	DeletedAt     gorm.DeletedAt `gorm:"index"`
+	CreatorWallet string         `gorm:"index:idx_wallet;not null"`
+	Creator       *User          `gorm:"foreignKey:CreatorWallet;references:Wallet"`
+	OwnerID       uint
+	OwnerType     string
 }
 
 type UpvoteBlock struct {
@@ -82,13 +82,13 @@ type UpvoteBlock struct {
 }
 
 type Downvote struct {
-	ID        uint           `gorm:"primaryKey"`
-	CreatedAt time.Time      `gorm:"autoCreateTime"`
-	DeletedAt gorm.DeletedAt `gorm:"index"`
-	CreatorID uint           `gorm:"not null"`
-	Creator   *User
-	OwnerID   uint
-	OwnerType string
+	ID            uint           `gorm:"primaryKey"`
+	CreatedAt     time.Time      `gorm:"autoCreateTime"`
+	DeletedAt     gorm.DeletedAt `gorm:"index"`
+	CreatorWallet string         `gorm:"index:idx_wallet;not null"`
+	Creator       *User          `gorm:"foreignKey:CreatorWallet;references:Wallet"`
+	OwnerID       uint
+	OwnerType     string
 }
 
 type DownvoteBlock struct {
@@ -97,9 +97,9 @@ type DownvoteBlock struct {
 }
 
 type EmojiRelation struct {
-	ID        uint `gorm:"primaryKey"`
-	EmojiID   uint `gorm:"not null"`
-	Emoji     *Emoji
+	ID        uint           `gorm:"primaryKey"`
+	EmojiCode string         `gorm:"index:,unique;not null"`
+	Emoji     *Emoji         `gorm:"foreignKey:EmojiCode;references:Code"`
 	OwnerID   uint           `gorm:"not null"`
 	OwnerType string         `gorm:"not null"`
 	CreatedAt time.Time      `gorm:"autoCreateTime"`
