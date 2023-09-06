@@ -41,6 +41,14 @@ func prepareTopicData(t *testing.T) *gorm.DB {
 		{Name: "Honkai Impact", Creator: user, Description: "Honkai Impact"},
 	}
 
+	topic := &Topic{
+		Hash:          "topic1",
+		Title:         "This is a testing topic",
+		CreatorWallet: "0x123456789",
+		Creator:       user,
+		Content:       "Hello world",
+	}
+
 	db := newSqliteDB()
 
 	assert.NoError(t, db.Create(&user).Error)
@@ -54,6 +62,7 @@ func prepareTopicData(t *testing.T) *gorm.DB {
 		},
 		},
 	}).Error)
+	assert.NoError(t, db.Create(&topic).Error)
 
 	return db
 }
@@ -221,8 +230,8 @@ func TestCreateTopicCallback(t *testing.T) {
 		CID:      "abcd",
 		Hash:     "abcd",
 		Creator:  "0x123456789",
-		Category: 1,
-		Tags:     []uint{1, 2},
+		Category: "Mihoyo",
+		Tags:     []string{"Genshin Impact", "Honkai Impact"},
 		Images:   []string{"abcd"},
 	}
 
@@ -263,8 +272,8 @@ func TestCreateTopicCallback(t *testing.T) {
 
 		storage.EXPECT().Cat(topicBlock.CID).Return(reader, nil)
 		topicBlock.Creator = "0x123456789"
-    topicBlock.Category = 1
-		topicBlock.Tags = []uint{1, 2}
+		topicBlock.Category = "Mihoyo"
+		topicBlock.Tags = []string{"Genshin Impact", "Honkai Impact"}
 
 		b, _ := json.Marshal(&topicBlock)
 
@@ -272,6 +281,482 @@ func TestCreateTopicCallback(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
+}
+
+func TestInvokeUpdateTopic(t *testing.T) {
+	type UpdateTopicRequest struct {
+		Hash    string   `json:"hash"`
+		Content string   `json:"content"`
+		Images  []string `json:"assets"`
+		Type    string   `json:"type"`
+	}
+
+	payload := UpdateTopicRequest{
+		Hash:    "topic1",
+		Content: "Hello world",
+		Images:  []string{},
+		Type:    "topic",
+	}
+
+	storage := ipfsmock.NewMockIPFSStorage(t)
+	storage.EXPECT().Version().Return("abcd", "abcd", nil).Once()
+
+	ipfs := NewMockIPFSManager(storage)
+
+	contract := fabricmock.NewMockContract()
+
+	db := prepareTopicData(t)
+
+	updateTopic := invokeUpdateTopic(logger, ipfs, db)
+	t.Run("Updating Topic With Unmarshal Error", func(t *testing.T) {
+
+		req := httptest.NewRequest(http.MethodPost, "/api/topic/invoke/UpdateTopic", bytes.NewReader([]byte{1, 2, 3}))
+		rec := httptest.NewRecorder()
+
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		err := updateTopic(contract, c)
+
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+
+	t.Run("Updating Topic With Hash Error", func(t *testing.T) {
+		payload.Hash = "a111"
+		req := httptest.NewRequest(http.MethodPost, "/api/topic/invoke/UpdateTopic", newJsonRequest(&payload))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		err := updateTopic(contract, c)
+
+		assert.Error(t, err)
+		payload.Hash = "topic1"
+	})
+
+	t.Run("Updating Topic With IPFS Failure", func(t *testing.T) {
+
+		storage.On("Add", mock.Anything).Return("", errors.New("hello world")).Once()
+
+		req := httptest.NewRequest(http.MethodPost, "/api/topic/invoke/UpdateTopic", newJsonRequest(&payload))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		err := updateTopic(contract, c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+
+	})
+
+	t.Run("Updating Topic With Base64DecodeError", func(t *testing.T) {
+
+		payload.Images = []string{"base64Error&*"}
+		storage.On("Add", mock.Anything).Return("base64", nil).Once()
+
+		req := httptest.NewRequest(http.MethodPost, "/api/topic/invoke/UpdateTopic", newJsonRequest(&payload))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		err := updateTopic(contract, c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+
+	})
+
+	t.Run("Updating Topic With IPFS Error on Uploading Images", func(t *testing.T) {
+
+		payload.Images = []string{base64.StdEncoding.EncodeToString([]byte("base64Error&*"))}
+
+		storage.On("Add", mock.Anything).Return("base64", nil).Once()
+		storage.On("Add", mock.Anything).Return("", errors.New("Hello world")).Once()
+
+		req := httptest.NewRequest(http.MethodPost, "/api/topic/invoke/UpdateTopic", newJsonRequest(&payload))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		err := updateTopic(contract, c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	})
+
+	t.Run("Updating Topic With Chaincode Network Failure", func(t *testing.T) {
+
+		payload.Images = []string{base64.StdEncoding.EncodeToString([]byte("base64Error&*"))}
+
+		storage.On("Add", mock.Anything).Return("base64", nil)
+
+		req := httptest.NewRequest(http.MethodPost, "/api/topic/invoke/UpdateTopic", newJsonRequest(&payload))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		contract.On("Submit", "UpdateTopic", mock.Anything).Return([]byte(nil), errors.New("Hello world")).Once()
+		err := updateTopic(contract, c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+
+	})
+
+	t.Run("Updating Topic With Success", func(t *testing.T) {
+
+		payload.Images = []string{base64.StdEncoding.EncodeToString([]byte("base64Error&*"))}
+
+		storage.On("Add", mock.Anything).Return("base64", nil)
+
+		req := httptest.NewRequest(http.MethodPost, "/api/topic/invoke/UpdateTopic", newJsonRequest(&payload))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		contract.On("Submit", "UpdateTopic", mock.Anything).Return([]byte(nil), nil).Once()
+		err := updateTopic(contract, c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+
+}
+
+func TestUpdateTopicCallback(t *testing.T) {
+
+	topicBlock := TopicBlock{
+		CID:     "defg",
+		Hash:    "topic1",
+		Creator: "0x123456789",
+		Images:  []string{"abcd"},
+	}
+
+	storage := ipfsmock.NewMockIPFSStorage(t)
+	storage.EXPECT().Version().Return("abcd", "abcd", nil).Once()
+
+	ipfs := NewMockIPFSManager(storage)
+
+	db := prepareTopicData(t)
+
+	updateTopic := updateTopicCallback(logger, ipfs, db)
+
+	t.Run("Update Topic Callback With IPFS failure", func(t *testing.T) {
+
+		storage.EXPECT().Cat(topicBlock.CID).Return(io.ReadCloser(nil), errors.New("hello world")).Once()
+		b, _ := json.Marshal(&topicBlock)
+
+		err := updateTopic(b)
+		assert.Error(t, err)
+
+	})
+
+	reader := io.NopCloser(bytes.NewReader([]byte("document")))
+
+	t.Run("Creating Topic Callback with success", func(t *testing.T) {
+
+		storage.EXPECT().Cat(topicBlock.CID).Return(reader, nil)
+
+		b, _ := json.Marshal(&topicBlock)
+
+		err := updateTopic(b)
+		assert.NoError(t, err)
+	})
+
+	t.Run("Creating Topic Callback with hash not found", func(t *testing.T) {
+		topicBlock.Hash = "unknown"
+
+		b, _ := json.Marshal(&topicBlock)
+
+		err := updateTopic(b)
+		assert.Error(t, err)
+	})
+
+}
+
+func TestInvokeUpvoteTopic(t *testing.T) {
+	type UpvoteRequest struct {
+		Hash string `json:"hash"`
+		Type string `json:"type"`
+	}
+
+	payload := UpvoteRequest{
+		Hash: "topic1",
+		Type: "Topic",
+	}
+
+	contract := fabricmock.NewMockContract()
+
+	db := prepareTopicData(t)
+
+	upvoteTopic := invokeUpvoteTopic(logger, db)
+
+	t.Run("Upvoting Topic With Unmarshal Error", func(t *testing.T) {
+
+		req := httptest.NewRequest(http.MethodPost, "/api/topic/invoke/upvote", bytes.NewReader([]byte{1, 2, 3}))
+		rec := httptest.NewRecorder()
+
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		err := upvoteTopic(contract, c)
+
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+
+	t.Run("Upvoting Topic With Hash Error", func(t *testing.T) {
+		payload.Hash = "a111"
+		req := httptest.NewRequest(http.MethodPost, "/api/topic/invoke/upvote", newJsonRequest(&payload))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		err := upvoteTopic(contract, c)
+
+		assert.Error(t, err)
+		payload.Hash = "topic1"
+	})
+
+	t.Run("Upvoting Topic With Chaincode Network Failure", func(t *testing.T) {
+
+		req := httptest.NewRequest(http.MethodPost, "/api/topic/invoke/upvote", newJsonRequest(&payload))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		contract.On("Submit", "UpvoteTopic", mock.Anything).Return([]byte(nil), errors.New("Hello world")).Once()
+		err := upvoteTopic(contract, c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+
+	})
+
+	t.Run("Upvoting Topic With Success", func(t *testing.T) {
+
+		req := httptest.NewRequest(http.MethodPost, "/api/topic/invoke/upvote", newJsonRequest(&payload))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		contract.On("Submit", "UpvoteTopic", mock.Anything).Return([]byte(nil), nil).Once()
+		err := upvoteTopic(contract, c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+}
+
+func TestUpvoteTopicCallback(t *testing.T) {
+
+	upvoteBlock := UpvoteBlock{
+		Hash:    "topic1",
+		Creator: "0x123456789",
+	}
+
+	db := prepareTopicData(t)
+
+	upvoteTopic := upvoteTopicCallback(logger, db)
+
+	t.Run("Upvoting Topic Callback with hash not found", func(t *testing.T) {
+		upvoteBlock.Hash = "unknown"
+
+		b, _ := json.Marshal(&upvoteBlock)
+
+		err := upvoteTopic(b)
+		assert.Error(t, err)
+		upvoteBlock.Hash = "topic1"
+	})
+
+	t.Run("Upvoting Topic Callback with creator not found", func(t *testing.T) {
+		upvoteBlock.Creator = "unknown"
+
+		b, _ := json.Marshal(&upvoteBlock)
+
+		err := upvoteTopic(b)
+		assert.Error(t, err)
+		upvoteBlock.Creator = "0x123456789"
+	})
+
+	t.Run("Upvoting Topic Callback with success", func(t *testing.T) {
+
+		b, _ := json.Marshal(&upvoteBlock)
+
+		err := upvoteTopic(b)
+		assert.NoError(t, err)
+	})
+
+}
+
+func TestInvokeDownvoteTopic(t *testing.T) {
+	type DownvoteRequest struct {
+		Hash string `json:"hash"`
+		Type string `json:"type"`
+	}
+
+	payload := DownvoteRequest{
+		Hash: "topic1",
+		Type: "Topic",
+	}
+
+	contract := fabricmock.NewMockContract()
+
+	db := prepareTopicData(t)
+
+	downvoteTopic := invokeDownvoteTopic(logger, db)
+
+	t.Run("Downvoting Topic With Unmarshal Error", func(t *testing.T) {
+
+		req := httptest.NewRequest(http.MethodPost, "/api/topic/invoke/downvote", bytes.NewReader([]byte{1, 2, 3}))
+		rec := httptest.NewRecorder()
+
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		err := downvoteTopic(contract, c)
+
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+
+	t.Run("Downvoting Topic With Hash Error", func(t *testing.T) {
+		payload.Hash = "a111"
+		req := httptest.NewRequest(http.MethodPost, "/api/topic/invoke/downvote", newJsonRequest(&payload))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		err := downvoteTopic(contract, c)
+
+		assert.Error(t, err)
+		payload.Hash = "topic1"
+	})
+
+	t.Run("Downvoting Topic With Chaincode Network Failure", func(t *testing.T) {
+
+		req := httptest.NewRequest(http.MethodPost, "/api/topic/invoke/downvote", newJsonRequest(&payload))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		contract.On("Submit", "DownvoteTopic", mock.Anything).Return([]byte(nil), errors.New("Hello world")).Once()
+		err := downvoteTopic(contract, c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+
+	})
+
+	t.Run("Downvoting Topic With Success", func(t *testing.T) {
+
+		req := httptest.NewRequest(http.MethodPost, "/api/topic/invoke/downvote", newJsonRequest(&payload))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		contract.On("Submit", "DownvoteTopic", mock.Anything).Return([]byte(nil), nil).Once()
+		err := downvoteTopic(contract, c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+}
+
+func TestDownvoteTopicCallback(t *testing.T) {
+
+	downvoteBlock := DownvoteBlock{
+		Hash:    "topic1",
+		Creator: "0x123456789",
+	}
+
+	db := prepareTopicData(t)
+
+	downvoteTopic := downvoteTopicCallback(logger, db)
+
+	t.Run("Downvoting Topic Callback with hash not found", func(t *testing.T) {
+		downvoteBlock.Hash = "unknown"
+
+		b, _ := json.Marshal(&downvoteBlock)
+
+		err := downvoteTopic(b)
+		assert.Error(t, err)
+		downvoteBlock.Hash = "topic1"
+	})
+
+	t.Run("Downvoting Topic Callback with creator not found", func(t *testing.T) {
+		downvoteBlock.Creator = "unknown"
+
+		b, _ := json.Marshal(&downvoteBlock)
+
+		err := downvoteTopic(b)
+		assert.Error(t, err)
+		downvoteBlock.Creator = "0x123456789"
+	})
+
+	t.Run("Downvoting Topic Callback with success", func(t *testing.T) {
+
+		b, _ := json.Marshal(&downvoteBlock)
+
+		err := downvoteTopic(b)
+		assert.NoError(t, err)
+	})
+
+}
+
+func TestQueryCategories(t *testing.T) {
+	t.Run("Querying Categories With Success", func(t *testing.T) {
+
+		db := newSqliteDB()
+
+		query := queryCategories(logger, db)
+		results := []CategoryGroup{}
+
+		req := httptest.NewRequest(http.MethodGet, "/api/topic/query/categories", newJsonRequest(&results))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+
+		rec := httptest.NewRecorder()
+		c := server.NewContext(req, rec)
+
+		var _ = query(c)
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+}
+
+func TestQueryTags(t *testing.T) {
+	t.Run("Querying Tags With Success", func(t *testing.T) {
+
+		db := newSqliteDB()
+
+		query := queryTags(logger, db)
+		results := []Topic{}
+
+		req := httptest.NewRequest(http.MethodGet, "/api/topic/query/tags", newJsonRequest(&results))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+
+		rec := httptest.NewRecorder()
+		c := server.NewContext(req, rec)
+
+		var _ = query(c)
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
 }
 
 func TestNewTopicChaincodeMiddleware(t *testing.T) {

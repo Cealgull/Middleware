@@ -146,6 +146,9 @@ func NewGatewayMiddleware(logger *zap.Logger, ipfs *ipfs.IPFSManager, config *co
 
 	cm["user"] = chaincodes.NewUserProfileMiddleware(logger, network, db)
 	cm["topic"] = chaincodes.NewTopicChaincodeMiddleware(logger, network, ipfs, db)
+  cm["tag"] = chaincodes.NewTagChaincodeMiddleware(logger, network, ipfs, db)
+  cm["category"] = chaincodes.NewCategoryChaincodeMiddleware(logger, network, ipfs, db)
+  cm["categoryGroup"] = chaincodes.NewCategoryGroupChaincodeMiddleware(logger, network, ipfs, db)
 
 	return &GatewayMiddleware{
 		db:     db,

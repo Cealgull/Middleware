@@ -54,12 +54,12 @@ func invokeUpdateUser(logger *zap.Logger, db *gorm.DB) ChaincodeInvoke {
 
 		type ProfileChanged struct {
 			Username  string `json:"username"`
-			Wallet    string `json:"-"`
+			Wallet    string `json:"wallet"`
 			Avatar    string `json:"avatar"`
 			Signature string `json:"signature"`
 
-			ActiveRole  uint `json:"activeRole"`
-			ActiveBadge uint `json:"activeBadge"`
+			ActiveRole string `json:"activeRole"`
+			ActiveBadge string `json:"activeBadge"`
 		}
 
 		profile := ProfileChanged{}
@@ -81,11 +81,11 @@ func invokeUpdateUser(logger *zap.Logger, db *gorm.DB) ChaincodeInvoke {
 				First(&userProfile).Error; err != nil {
 				return err
 			}
-			if !utils.Contains(utils.Map(userProfile.RoleRelationsAssigned, func(r *RoleRelation) uint {
-				return r.RoleID
-			}), profile.ActiveRole) || !utils.Contains(utils.Map(userProfile.BadgeRelationsReceived, func(r *BadgeRelation) uint {
-        return r.BadgeID
-      }), profile.ActiveBadge) {
+			if !utils.Contains(utils.Map(userProfile.RoleRelationsAssigned, func(r *RoleRelation) string {
+				return r.RoleName
+			}), profile.ActiveRole) || !utils.Contains(utils.Map(userProfile.BadgeRelationsReceived, func(r *BadgeRelation) string {
+				return r.BadgeName
+			}), profile.ActiveBadge) {
 				return errors.New("User does not have the role or badge")
 			}
 			return nil
@@ -155,8 +155,8 @@ func updateUserCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallback 
 			Credibility uint   `json:"credibility"`
 			Balance     int    `json:"balance"`
 
-			ActiveRole  uint `json:"activeRole"`
-			ActiveBadge uint `json:"activeBadge"`
+			ActiveRole  string `json:"activeRole"`
+			ActiveBadge string `json:"activeBadge"`
 		}
 
 		profileChanged := ProfileChanged{}
@@ -174,7 +174,6 @@ func updateUserCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallback 
 				Signature:   profileChanged.Signature,
 				Credibility: profileChanged.Credibility,
 				Balance:     profileChanged.Balance,
-				User:        &user,
 			}
 
 			prevProfile := Profile{}
@@ -184,20 +183,24 @@ func updateUserCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallback 
 				return err
 			}
 
-			var _ = tx.Model(&prevProfile).Updates(&profile).Error
+			profile.ID = prevProfile.ID
+			user.ID = prevProfile.User.ID
 
-			if profileChanged.ActiveBadge != 0 {
-				if err := tx.Model(prevProfile.User).Association("ActiveBadgeRelation").
-					Append(&BadgeRelation{BadgeID: profileChanged.ActiveBadge}); err != nil {
-					return err
-				}
+			var _ = tx.Updates(&profile).Error
+			var _ = tx.Updates(&user).Error
+
+			if len(profileChanged.ActiveBadge) != 0 {
+        if err := tx.Model(prevProfile.User).Association("ActiveBadgeRelation").
+          Append(&BadgeRelation{BadgeName: profileChanged.ActiveBadge}); err != nil{
+          return err
+        }
 			}
 
-			if profileChanged.ActiveRole != 0 {
-				if err := tx.Model(prevProfile.User).Association("ActiveRoleRelation").
-					Append(&RoleRelation{RoleID: profileChanged.ActiveRole}); err != nil {
-					return err
-				}
+			if len(profileChanged.ActiveRole) != 0 {
+        if err := tx.Model(prevProfile.User).Association("ActiveRoleRelation").
+          Append(&RoleRelation{RoleName: profileChanged.ActiveRole}); err != nil {
+          return err
+        }
 			}
 
 			return nil

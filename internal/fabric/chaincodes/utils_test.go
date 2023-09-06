@@ -27,16 +27,16 @@ func TestValidate(t *testing.T) {
 	assert.NoError(t, db.Create(&tags).Error)
 
   t.Run("Validating with Empty Tags", func(t *testing.T) {
-    err := validate(db, []Tag{}, []uint{})
+    err := validate(db, []Tag{}, []string{})
     assert.NoError(t, err)
   })
 
 	t.Run("Validating with Success", func(t *testing.T) {
-		assert.NoError(t, validate(db, []Tag{}, []uint{1, 2}))
+		assert.NoError(t, validate(db, []Tag{}, []string{"Genshin Impact", "Honkai Impact"}))
 	})
 
 	t.Run("Validating with Failure", func(t *testing.T) {
-		err := validate(db, []Tag{}, []uint{3, 4})
+		err := validate(db, []Tag{}, []string{"Genshin Impact 2", "Genshin Impact 3"})
 		assert.Error(t, err)
 		logger.Info("Error:", zap.Error(err))
 	})

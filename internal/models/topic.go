@@ -13,8 +13,8 @@ type TopicBlock struct {
 	Title     string   `json:"title"`
 	Creator   string   `json:"creator"`
 	CID       string   `json:"cid"`
-	Category  uint     `json:"category"`
-	Tags      []uint   `json:"tags"`
+	Category  string   `json:"category"`
+	Tags      []string `json:"tags"`
 	Images    []string `json:"images"`
 	Upvotes   []string `json:"upvotes"`
 	Downvotes []string `json:"downvotes"`
@@ -42,12 +42,11 @@ type Topic struct {
 func (t *Topic) MarshalJSON() ([]byte, error) {
 
 	type DisplayTag struct {
-		ID   uint   `json:"id"`
 		Name string `json:"title"`
+    Color string `json:"color"`
 	}
 
 	type DisplayCategory struct {
-		ID    uint   `json:"id"`
 		Name  string `json:"title"`
 		Color uint   `json:"color"`
 	}
@@ -81,9 +80,9 @@ func (t *Topic) MarshalJSON() ([]byte, error) {
 		Title:            t.Title,
 		Creator:          t.Creator,
 		Content:          t.Content,
-		CategoryAssigned: &DisplayCategory{ID: t.CategoryAssigned.CategoryID, Name: t.CategoryAssigned.Category.Name},
+		CategoryAssigned: &DisplayCategory{Name: t.CategoryAssigned.Category.Name},
 		TagsAssigned: utils.Map(t.TagsAssigned, func(t *TagRelation) *DisplayTag {
-			return &DisplayTag{ID: t.TagID, Name: t.Tag.Name}
+        return &DisplayTag{ Name: t.Tag.Name}
 		}),
 		Upvotes:   utils.Map(t.Upvotes, func(u *Upvote) string { return u.Creator.Wallet }),
 		Downvotes: utils.Map(t.Downvote, func(d *Downvote) string { return d.Creator.Wallet }),
