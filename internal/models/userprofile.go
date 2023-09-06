@@ -101,12 +101,15 @@ func (p *Profile) MarshalJSON() ([]byte, error) {
 }
 
 type User struct {
-	gorm.Model
-	Username string `gorm:"not null"`
-	Wallet   string `gorm:"index:,unique,sort:desc,not null"`
-	Avatar   string
-	Muted    bool `gorm:"not null"`
-	Banned   bool `gorm:"not null"`
+	ID        uint   `gorm:"primaryKey"`
+	Username  string `gorm:"not null"`
+	Wallet    string `gorm:"index:,unique,sort:desc,not null"`
+	Avatar    string
+	Muted     bool           `gorm:"not null"`
+	Banned    bool           `gorm:"not null"`
+	CreatedAt time.Time      `gorm:"autoCreateTime"`
+	UpdatedAt time.Time      `gorm:"autoUpdateTime"`
+	DeletedAt gorm.DeletedAt `gorm:"index"`
 
 	ActiveBadgeRelation *BadgeRelation `gorm:"polymorphic:Owner"`
 	ActiveRoleRelation  *RoleRelation  `gorm:"polymorphic:Owner"`

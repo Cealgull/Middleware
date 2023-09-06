@@ -30,8 +30,8 @@ type Post struct {
 	CreatorWallet string    `gorm:"index;not null"`
 	Creator       *User     `gorm:"references:Wallet"`
 	Content       string    `gorm:"not null"`
-	CreateAt      time.Time `gorm:"autoCreateTime;not null"`
-	UpdateAt      time.Time `gorm:"autoUpdateTime;not null"`
+	CreatedAt      time.Time `gorm:"autoCreateTime;not null"`
+	UpdatedAt      time.Time `gorm:"autoUpdateTime;not null"`
 	DeletedAt     gorm.DeletedAt
 	ReplyToID     *uint
 	ReplyTo       *Post
@@ -70,16 +70,16 @@ func (p *Post) MarshalJSON() ([]byte, error) {
 		Hash:     p.Hash,
 		Creator:  p.Creator,
 		Content:  p.Content,
-		CreateAt: p.CreateAt,
-		UpdateAt: p.UpdateAt,
+		CreateAt: p.CreatedAt,
+		UpdateAt: p.UpdatedAt,
 		ReplyTo: func() *DisplayReply {
 			if p.ReplyTo != nil {
 				return &DisplayReply{
 					Hash:     p.ReplyTo.Hash,
 					Creator:  p.ReplyTo.Creator,
 					Content:  p.Content,
-          CreateAt: p.ReplyTo.CreateAt,
-					UpdateAt: p.ReplyTo.UpdateAt,
+          CreateAt: p.ReplyTo.CreatedAt,
+					UpdateAt: p.ReplyTo.UpdatedAt,
 					Assets:   p.ReplyTo.Assets,
 				}
 			}
