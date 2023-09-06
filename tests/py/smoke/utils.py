@@ -28,7 +28,7 @@ def test_auth_login() -> Credential:
     sig = base64.b64encode(priv.sign(cert.encode())).decode()
 
     res = requests.post(
-        MIDDLEWARE_HOST + "/api/user/invoke/create",
+        CEALGULL_MIDDLEWARE_HOST + "/api/user/invoke/create",
         headers={"signature": sig},
         json={"cert": cert},
     )
@@ -36,7 +36,7 @@ def test_auth_login() -> Credential:
     time.sleep(0.5)
 
     res = requests.post(
-        MIDDLEWARE_HOST + "/auth/login",
+        CEALGULL_MIDDLEWARE_HOST + "/auth/login",
         headers={"signature": sig},
         json={"cert": cert},
     )
@@ -51,5 +51,5 @@ def request_with_credential(
     credential: Credential, endpoint: str, payload: dict
 ) -> dict:
     return requests.post(
-        MIDDLEWARE_HOST + endpoint, cookies=credential.cookies, json=payload
+        CEALGULL_MIDDLEWARE_HOST + endpoint, cookies=credential.cookies, json=payload
     ).json()
