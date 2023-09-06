@@ -36,6 +36,12 @@ func preparePostData(t *testing.T) *gorm.DB {
 		Creator: user,
 	}
 
+	db := newSqliteDB()
+
+	assert.NoError(t, db.Create(&user).Error)
+
+	assert.NoError(t, db.Create(&topic).Error)
+
 	posts := []*Post{
 		{
 			Hash:     "post1",
@@ -51,10 +57,6 @@ func preparePostData(t *testing.T) *gorm.DB {
 		},
 	}
 
-	db := newSqliteDB()
-
-	assert.NoError(t, db.Create(&user).Error)
-	assert.NoError(t, db.Create(&topic).Error)
 	assert.NoError(t, db.Create(&posts).Error)
 
 	return db
@@ -113,7 +115,8 @@ func TestInvokeCreatePost(t *testing.T) {
 
 		err := createPost(contract, c)
 
-		assert.Error(t, err)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
 
 		payload.BelongTo = "topic"
 	})
@@ -130,7 +133,8 @@ func TestInvokeCreatePost(t *testing.T) {
 
 		err := createPost(contract, c)
 
-		assert.Error(t, err)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
 
 		payload.ReplyTo = "post2"
 	})
@@ -355,7 +359,8 @@ func TestInvokeUpdatePost(t *testing.T) {
 
 		err := updatePost(contract, c)
 
-		assert.Error(t, err)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
 		payload.Hash = "post1"
 	})
 

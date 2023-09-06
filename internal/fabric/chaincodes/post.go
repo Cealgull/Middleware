@@ -38,14 +38,19 @@ func invokeCreatePost(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) C
 		}
 
 		replyPost := Post{}
+
 		if err := db.Model(&Post{}).
 			Where("hash = ?", postRequest.ReplyTo).First(&replyPost).Error; err != nil {
-			return err
+			chaincodeFieldValidationError := ChaincodeFieldValidationError{"replyTo"}
+			return c.JSON(chaincodeFieldValidationError.Status(), chaincodeFieldValidationError.Message())
 		}
+
 		belongTopic := Topic{}
+
 		if err := db.Model(&Topic{}).
 			Where("hash = ?", postRequest.BelongTo).First(&belongTopic).Error; err != nil {
-			return err
+			chaincodeFieldValidationError := ChaincodeFieldValidationError{"belongTo"}
+			return c.JSON(chaincodeFieldValidationError.Status(), chaincodeFieldValidationError.Message())
 		}
 
 		ts := []byte(time.Now().String())
@@ -81,8 +86,6 @@ func invokeCreatePost(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) C
 			Hash:     hash,
 			Creator:  wallet,
 			CID:      CID,
-			CreateAt: time.Now(),
-			UpdateAt: time.Now(),
 			ReplyTo:  postRequest.ReplyTo,
 			BelongTo: postRequest.BelongTo,
 			Assets:   images,
@@ -107,15 +110,15 @@ func createPostCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB)
 
 		var _ = json.Unmarshal(payload, &postBlock)
 
-		replyPost := Post{}
-		if err := db.Model(&Post{}).
-			Where("hash = ?", postBlock.ReplyTo).First(&replyPost).Error; err != nil {
-			return err
-		}
-		belongTopic := Topic{}
-		if err := db.Model(&Topic{}).
-			Where("hash = ?", postBlock.BelongTo).First(&belongTopic).Error; err != nil {
-			return err
+		replyPost := &Post{}
+
+		if postBlock.ReplyTo != "" {
+			if err := db.Model(&Post{}).
+				Where("hash = ?", postBlock.ReplyTo).First(replyPost).Error; err != nil {
+				return err
+			}
+		} else {
+			replyPost = nil
 		}
 
 		assets := utils.Map(postBlock.Assets, func(image string) *Asset {
@@ -134,22 +137,25 @@ func createPostCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB)
 
 		var _ = assets
 
+		post := Post{
+			Hash:          postBlock.Hash,
+			CreatorWallet: postBlock.Creator,
+			Content:       string(data),
+
+			BelongToHash: postBlock.BelongTo,
+			Assets:       assets,
+		}
+
 		return db.Transaction(func(tx *gorm.DB) error {
-
-			post := Post{
-				Hash:          postBlock.Hash,
-				CreatorWallet: postBlock.Creator,
-				Content:       string(data),
-				CreateAt:      postBlock.CreateAt,
-				UpdateAt:      postBlock.UpdateAt,
-
-				BelongTo: &belongTopic,
-				ReplyTo:  &replyPost,
-				Assets:   assets,
-			}
 
 			if err := tx.Create(&post).Error; err != nil {
 				return err
+			}
+
+			if replyPost != nil {
+				if err := tx.Model(&post).Association("ReplyTo").Append(replyPost); err != nil {
+					return err
+				}
 			}
 
 			return nil
@@ -163,7 +169,6 @@ func invokeUpdatePost(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) C
 			Hash    string   `json:"hash"`
 			Content string   `json:"content"`
 			Assets  []string `json:"assets"`
-			Type    string   `json:"type"`
 		}
 
 		postRequest := ChangePostRequest{}
@@ -174,7 +179,8 @@ func invokeUpdatePost(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) C
 		post := Post{}
 		if err := db.Model(&Post{}).
 			Where("hash = ?", postRequest.Hash).First(&post).Error; err != nil {
-			return err
+			chaincodeFieldValidationError := ChaincodeFieldValidationError{"hash"}
+			return c.JSON(chaincodeFieldValidationError.Status(), chaincodeFieldValidationError.Message())
 		}
 
 		CID, err := ipfs.Put(bytes.NewReader([]byte(postRequest.Content)))
@@ -201,10 +207,9 @@ func invokeUpdatePost(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) C
 		}
 
 		postBlock := PostBlock{
-			Hash:     postRequest.Hash,
-			CID:      CID,
-			UpdateAt: time.Now(),
-			Assets:   images,
+			Hash:   postRequest.Hash,
+			CID:    CID,
+			Assets: images,
 		}
 
 		b, _ := json.Marshal(&postBlock)
@@ -248,8 +253,7 @@ func updatePostCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB)
 		var _ = assets
 
 		return db.Transaction(func(tx *gorm.DB) error {
-			tx.Model(&post).Select("content", "update_at", "assets").Updates(map[string]interface{}{"content": string(data), "update_at": postChanged.UpdateAt,
-				"assets": assets})
+			tx.Model(&post).Select("content", "assets").Updates(map[string]interface{}{"content": string(data), "assets": assets})
 
 			return nil
 		})
