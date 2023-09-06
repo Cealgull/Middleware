@@ -21,3 +21,9 @@ func validate(db *gorm.DB, models interface{}, names []string) proto.MiddlewareE
 
 	return nil
 }
+
+func paginate(pageOrdinal int, pageSize int) func(db *gorm.DB) *gorm.DB{
+  return func(db *gorm.DB) *gorm.DB {
+    return db.Offset((pageOrdinal - 1) * pageSize).Limit(pageSize)
+  }
+}
