@@ -263,7 +263,6 @@ func updatePostCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB)
 			}
 
       return tx.Model(&post).
-        Session(&gorm.Session{FullSaveAssociations: true}).
         Updates(&Post{Content: string(data), Assets: assets}).Error
 
 		})
