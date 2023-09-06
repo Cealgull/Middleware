@@ -230,8 +230,8 @@ func TestCreateTopicCallback(t *testing.T) {
 		CID:      "abcd",
 		Hash:     "abcd",
 		Creator:  "0x123456789",
-		Category: 1,
-		Tags:     []uint{1, 2},
+		Category: "Mihoyo",
+		Tags:     []string{"Genshin Impact", "Honkai Impact"},
 		Images:   []string{"abcd"},
 	}
 
@@ -272,8 +272,8 @@ func TestCreateTopicCallback(t *testing.T) {
 
 		storage.EXPECT().Cat(topicBlock.CID).Return(reader, nil)
 		topicBlock.Creator = "0x123456789"
-		topicBlock.Category = 1
-		topicBlock.Tags = []uint{1, 2}
+		topicBlock.Category = "Mihoyo"
+		topicBlock.Tags = []string{"Genshin Impact", "Honkai Impact"}
 
 		b, _ := json.Marshal(&topicBlock)
 

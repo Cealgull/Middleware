@@ -26,8 +26,8 @@ func invokeCreateTopic(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) 
 			Content  string   `json:"content"`
 			Images   []string `json:"images"`
 			Title    string   `json:"title"`
-			Category uint     `json:"category"`
-			Tags     []uint   `json:"tags"`
+			Category string   `json:"category"`
+			Tags     []string `json:"tags"`
 		}
 
 		topicRequest := TopicRequest{}
@@ -109,9 +109,9 @@ func createTopicCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB
 			}
 		})
 
-		tagsAssigned := utils.Map(topicBlock.Tags, func(t uint) *TagRelation {
+		tagsAssigned := utils.Map(topicBlock.Tags, func(t string) *TagRelation {
 			return &TagRelation{
-				TagID: t,
+        TagName: t,
 			}
 		})
 
@@ -130,7 +130,7 @@ func createTopicCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB
 				Title:            topicBlock.Title,
 				Content:          string(data),
 				CreatorWallet:    topicBlock.Creator,
-				CategoryAssigned: &CategoryRelation{CategoryID: topicBlock.Category},
+				CategoryAssigned: &CategoryRelation{CategoryName: topicBlock.Category},
 				TagsAssigned:     tagsAssigned,
 				Assets:           assets,
 			}
@@ -150,7 +150,6 @@ func invokeUpdateTopic(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) 
 			Hash    string   `json:"hash"`
 			Content string   `json:"content"`
 			Assets  []string `json:"assets"`
-			Type    string   `json:"type"`
 		}
 
 		topicRequest := ChangeTopicRequest{}
@@ -292,15 +291,10 @@ func upvoteTopicCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallback
 			return err
 		}
 
-		user := User{}
-		if err := db.Model(&User{}).
-			Where("wallet = ?", upvoteBlock.Creator).First(&user).Error; err != nil {
-			return err
-		}
 
 		return db.Transaction(func(tx *gorm.DB) error {
 			upvote := Upvote{
-				Creator:   &user,
+        CreatorWallet:  upvoteBlock.Creator,
 				OwnerID:   topic.ID,
 				OwnerType: "Topic",
 			}
