@@ -17,8 +17,6 @@ class TopicTestCase(unittest.TestCase):
             {"name": "testGroup" + str(num), "color": 123},
         )
 
-        print(res)
-
         request_with_credential(
             self.credential,
             "/api/category/invoke/create",
@@ -29,8 +27,6 @@ class TopicTestCase(unittest.TestCase):
             },
         )
 
-        print(res)
-
         request_with_credential(
             self.credential,
             "/api/tag/invoke/create",
@@ -38,8 +34,6 @@ class TopicTestCase(unittest.TestCase):
         )
 
         self.num = num
-
-        print(res)
 
     def test_0001_create_topic(self):
         res = request_with_credential(
@@ -54,5 +48,29 @@ class TopicTestCase(unittest.TestCase):
             },
         )
         time.sleep(0.5)
+
+        res = request_with_credential(
+            self.credential,
+            "/api/topic/invoke/upvote",
+            {
+                "hash": res["hash"],
+            },
+        )
+
+        print(res)
+
+        time.sleep(0.5)
+
+        res = request_with_credential(
+            self.credential,
+            "/api/topic/query/list",
+            {
+                "pageOrdinal": 1,
+                "pageSize": 10,
+                "category": "testCategory" + str(self.num),
+                "tags": ["testTag" + str(self.num)],
+                "creator": self.credential.wallet,
+            },
+        )
 
         print(res)
