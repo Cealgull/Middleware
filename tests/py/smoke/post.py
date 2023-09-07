@@ -139,9 +139,9 @@ class PostTestCase(unittest.TestCase):
         self.assertIn(self.credentials.wallet, res["upvotes"])
 
     def test_0007_update_posts(self):
-        self.create_post(self.request, self.topic_hash)
+        hash = self.create_post(self.request, self.topic_hash)
         time.sleep(0.5)
-        self.request("/api/post/invoke/update", {"content": "hello world"})
+        self.request("/api/post/invoke/update", {"content": "hello world", "hash": hash})
         time.sleep(0.5)
         res = self.query_posts(self.request, self.topic_hash, self.credentials.wallet)[0]
         self.assertEqual(res["content"], "hello world")
