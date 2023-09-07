@@ -42,12 +42,11 @@ type Topic struct {
 func (t *Topic) MarshalJSON() ([]byte, error) {
 
 	type DisplayTag struct {
-		Name  string `json:"title"`
-		Color string `json:"color"`
+		Name string `json:"name"`
 	}
 
 	type DisplayCategory struct {
-		Name  string `json:"title"`
+		Name  string `json:"name"`
 		Color string `json:"color"`
 	}
 
@@ -63,7 +62,6 @@ func (t *Topic) MarshalJSON() ([]byte, error) {
 		Hash             string           `json:"hash"`
 		Title            string           `json:"title"`
 		Creator          *User            `json:"creator"`
-		Avatar           string           `json:"avatar"`
 		Content          string           `json:"content"`
 		CategoryAssigned *DisplayCategory `json:"categoryAssigned"`
 		TagsAssigned     []*DisplayTag    `json:"tagsAssigned"`
@@ -74,11 +72,12 @@ func (t *Topic) MarshalJSON() ([]byte, error) {
 		CreatedAt        time.Time        `json:"createdAt"`
 		UpdatedAt        time.Time        `json:"updatedAt"`
 	}{
-		Hash:             t.Hash,
-		Title:            t.Title,
-		Creator:          t.Creator,
-		Content:          t.Content,
-		CategoryAssigned: &DisplayCategory{Name: t.CategoryAssigned.CategoryName},
+		Hash:    t.Hash,
+		Title:   t.Title,
+		Creator: t.Creator,
+		Content: t.Content,
+		CategoryAssigned: &DisplayCategory{Name: t.CategoryAssigned.CategoryName,
+			Color: t.CategoryAssigned.Category.Color},
 		TagsAssigned: utils.Map(t.TagsAssigned, func(t *TagRelation) *DisplayTag {
 			return &DisplayTag{Name: t.TagName}
 		}),

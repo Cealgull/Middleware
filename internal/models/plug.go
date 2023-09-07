@@ -22,9 +22,9 @@ type TagBlock struct {
 }
 
 type TagRelation struct {
-	ID        uint   `gorm:"primaryKey"`
-	OwnerID   uint   `gorm:"not null"`
-	OwnerType string `gorm:"not null"`
+	ID        uint `gorm:"primaryKey"`
+	OwnerID   uint
+	OwnerType string
 	TagName   string `gorm:"not null"`
 	Tag       *Tag   `gorm:"foreignKey:TagName;references:Name"`
 }
@@ -43,8 +43,8 @@ type CategoryBlock struct {
 }
 
 type CategoryRelation struct {
-	ID           uint           `gorm:"primaryKey"`
-	TopicID      uint           `gorm:"not null"`
+	ID           uint `gorm:"primaryKey"`
+	TopicID      uint
 	CategoryName string         `gorm:"not null"`
 	Category     *Category      `gorm:"foreignKey:CategoryName;references:Name"`
 	CreatedAt    time.Time      `gorm:"autoCreateTime"`
