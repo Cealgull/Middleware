@@ -532,6 +532,8 @@ func queryTopicsList(logger *zap.Logger, db *gorm.DB) ChaincodeQuery {
         Preload("Assets").
 				Scopes(paginate(q.PageOrdinal, q.PageSize))
 
+			tx = tx.Where("deleted_at IS NULL")
+
 			if err := tx.Find(&topics).Error; err != nil {
 				return err
 			}

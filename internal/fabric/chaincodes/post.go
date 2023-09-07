@@ -465,6 +465,8 @@ func queryPostsList(logger *zap.Logger, db *gorm.DB) ChaincodeQuery {
 					Where("belong_to_hash = ?", q.BelongTo)
 			}
 
+			tx = tx.Where("deleted_at IS NULL")
+
 			if err := tx.Find(&posts).Error; err != nil {
 				return err
 			}
