@@ -66,31 +66,13 @@ func invokeCreatePost(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) C
 			return c.JSON(err.Status(), err.Message())
 		}
 
-		images := make([]string, len(postRequest.Images))
-
-		for i, imageb64 := range postRequest.Images {
-
-			data, err := base64.StdEncoding.DecodeString(imageb64)
-
-			if err != nil {
-				return c.JSON(chaincodeBase64DecodeError.Status(), chaincodeBase64DecodeError.Message())
-			}
-
-			if cid, err := ipfs.Put(bytes.NewReader(data)); err != nil {
-				return c.JSON(err.Status(), err.Message())
-			} else {
-				images[i] = cid
-			}
-
-		}
-
 		postBlock := PostBlock{
 			Hash:     hash,
 			Creator:  wallet,
 			CID:      CID,
 			ReplyTo:  postRequest.ReplyTo,
 			BelongTo: postRequest.BelongTo,
-			Assets:   images,
+			Assets:   postRequest.Images,
 		}
 
 		b, _ := json.Marshal(&postBlock)
@@ -195,27 +177,10 @@ func invokeUpdatePost(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) C
 			return c.JSON(err.Status(), err.Message())
 		}
 
-		images := make([]string, len(postRequest.Images))
-
-		for i, imageb64 := range postRequest.Images {
-
-			data, err := base64.StdEncoding.DecodeString(imageb64)
-
-			if err != nil {
-				return c.JSON(chaincodeBase64DecodeError.Status(), chaincodeBase64DecodeError.Message())
-			}
-
-			if cid, err := ipfs.Put(bytes.NewReader(data)); err != nil {
-				return c.JSON(err.Status(), err.Message())
-			} else {
-				images[i] = cid
-			}
-		}
-
 		postBlock := PostBlock{
 			Hash:   postRequest.Hash,
 			CID:    CID,
-			Assets: images,
+			Assets: postRequest.Images,
 		}
 
 		b, _ := json.Marshal(&postBlock)
@@ -243,12 +208,14 @@ func updatePostCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB)
 			return err
 		}
 
-		assets := utils.Map(postChanged.Assets, func(image string) *Asset {
+		assets := utils.FilterMap(postChanged.Assets, func(image string) *Asset {
 			return &Asset{
 				CreatorWallet: postChanged.Creator,
 				CID:           image,
 				ContentType:   "image/jpeg",
 			}
+		}, func(image string) bool {
+			return image != NONE
 		})
 
 		post := Post{}
@@ -262,9 +229,172 @@ func updatePostCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB)
 				return err
 			}
 
-      return tx.Model(&post).
-        Updates(&Post{Content: string(data), Assets: assets}).Error
+			if len(postChanged.Assets) != 0 {
+				if err := tx.Model(&post).Association("Assets").Replace(&assets); err != nil {
+					return err
+				}
+			}
 
+			return tx.Model(&post).
+				Updates(&Post{Content: string(data)}).Error
+
+		})
+	}
+}
+
+func invokeUpvotePost(logger *zap.Logger, db *gorm.DB) ChaincodeInvoke {
+	return func(contract common.Contract, c echo.Context) error {
+		type UpvoteRequest struct {
+			Hash string `json:"hash"`
+		}
+
+		upvoteRequest := UpvoteRequest{}
+		if err := c.Bind(&upvoteRequest); err != nil {
+			return c.JSON(chaincodeDeserializationError.Status(), chaincodeDeserializationError.Message())
+		}
+
+		post := Post{}
+		if err := db.Model(&Post{}).
+			Where("hash = ?", upvoteRequest.Hash).First(&post).Error; err != nil {
+			return err
+		}
+
+		s, _ := session.Get("session", c)
+		wallet := s.Values["wallet"].(string)
+
+		upvoteBlock := UpvoteBlock{
+			Hash:    upvoteRequest.Hash,
+			Creator: wallet,
+		}
+		b, _ := json.Marshal(&upvoteBlock)
+
+		if _, err := contract.Submit("UpvotePost", client.WithBytesArguments(b)); err != nil {
+			chaincodeInvokeFailure := ChaincodeInvokeFailureError{"UpvotePost"}
+			return c.JSON(chaincodeInvokeFailure.Status(), chaincodeInvokeFailure.Message())
+		}
+
+		return c.JSON(success.Status(), success.Message())
+
+	}
+}
+
+func upvotePostCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallback {
+
+	return func(payload []byte) error {
+
+		upvoteBlock := UpvoteBlock{}
+
+		var _ = json.Unmarshal(payload, &upvoteBlock)
+
+		post := Post{}
+
+		if err := db.Model(&Post{}).
+			Preload("Upvotes").
+			Where("hash = ?", upvoteBlock.Hash).First(&post).Error; err != nil {
+			return err
+		}
+
+		return db.Transaction(func(tx *gorm.DB) error {
+
+			upvote := Upvote{
+				CreatorWallet: upvoteBlock.Creator,
+			}
+
+			for _, u := range post.Upvotes {
+				if u.CreatorWallet == upvote.CreatorWallet {
+					tx.Model(&post).Association("Upvotes").Delete(u)
+					return nil
+				}
+			}
+
+			for _, d := range post.Downvotes {
+				if d.CreatorWallet == upvote.CreatorWallet {
+					tx.Model(&post).Association("Downvotes").Delete(d)
+					break
+				}
+			}
+
+			var _ = tx.Model(&post).Association("Upvotes").Append(&upvote)
+
+			return nil
+		})
+	}
+}
+
+func invokeDownvotePost(logger *zap.Logger, db *gorm.DB) ChaincodeInvoke {
+	return func(contract common.Contract, c echo.Context) error {
+		type DownvoteRequest struct {
+			Hash string `json:"hash"`
+		}
+
+		downvoteRequest := DownvoteRequest{}
+		if err := c.Bind(&downvoteRequest); err != nil {
+			return c.JSON(chaincodeDeserializationError.Status(), chaincodeDeserializationError.Message())
+		}
+
+		post := Post{}
+		if err := db.Model(&Post{}).
+			Where("hash = ?", downvoteRequest.Hash).First(&post).Error; err != nil {
+			return err
+		}
+
+		s, _ := session.Get("session", c)
+		wallet := s.Values["wallet"].(string)
+
+		downvoteBlock := DownvoteBlock{
+			Hash:    downvoteRequest.Hash,
+			Creator: wallet,
+		}
+		b, _ := json.Marshal(&downvoteBlock)
+
+		if _, err := contract.Submit("DownvotePost", client.WithBytesArguments(b)); err != nil {
+			chaincodeInvokeFailure := ChaincodeInvokeFailureError{"DownvotePost"}
+			return c.JSON(chaincodeInvokeFailure.Status(), chaincodeInvokeFailure.Message())
+		}
+
+		return c.JSON(success.Status(), success.Message())
+
+	}
+}
+
+func downvotePostCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallback {
+
+	return func(payload []byte) error {
+
+		downvoteBlock := DownvoteBlock{}
+
+		var _ = json.Unmarshal(payload, &downvoteBlock)
+
+		post := Post{}
+
+		if err := db.Model(&Post{}).
+			Preload("Downvotes").
+			Where("hash = ?", downvoteBlock.Hash).First(&post).Error; err != nil {
+			return err
+		}
+
+		return db.Transaction(func(tx *gorm.DB) error {
+
+			downvote := Downvote{
+				CreatorWallet: downvoteBlock.Creator,
+			}
+
+			for _, d := range post.Downvotes {
+				if d.CreatorWallet == downvote.CreatorWallet {
+					tx.Model(&post).Association("Downvotes").Delete(d)
+					return nil
+				}
+			}
+
+			for _, u := range post.Upvotes {
+				if u.CreatorWallet == downvote.CreatorWallet {
+					tx.Model(&post).Association("Upvotes").Delete(u)
+					break
+				}
+			}
+
+			var _ = tx.Model(&post).Association("Downvotes").Append(&downvote)
+			return nil
 		})
 	}
 }
@@ -308,6 +438,8 @@ func queryPostsList(logger *zap.Logger, db *gorm.DB) ChaincodeQuery {
 					Where("belong_to_hash = ?", q.BelongTo)
 			}
 
+			tx = tx.Where("deleted_at IS NULL")
+
 			if err := tx.Find(&posts).Error; err != nil {
 				return err
 			}
@@ -329,6 +461,9 @@ func NewPostChaincodeMiddleware(logger *zap.Logger, net common.Network, ipfs *ip
 
 		WithChaincodeHandler("create", "CreatePost", invokeCreatePost(logger, ipfs, db), createPostCallback(logger, ipfs, db)),
 		WithChaincodeHandler("update", "UpdatePost", invokeUpdatePost(logger, ipfs, db), updatePostCallback(logger, ipfs, db)),
+
+		WithChaincodeHandler("upvote", "UpvotePost", invokeUpvotePost(logger, db), upvotePostCallback(logger, db)),
+		WithChaincodeHandler("downvote", "DownvotePost", invokeDownvotePost(logger, db), downvotePostCallback(logger, db)),
 
 		WithChaincodeQuery("list", queryPostsList(logger, db)),
 	)

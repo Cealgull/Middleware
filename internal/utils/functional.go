@@ -10,6 +10,16 @@ func Map[T any, U any](data []T, f func(rune T) U) []U {
 	return r
 }
 
+func FilterMap[T any, U any](data []T, f func(rune T) U, g func(rune T) bool) []U{
+  r := []U{}
+  for _, x := range data {
+    if g(x) {
+      r = append(r, f(x))
+    }
+  }
+  return r
+}
+
 func Filter[T any](data []T, f func(rune T) bool) []T {
 	r := make([]T, 0)
 	for _, x := range data {

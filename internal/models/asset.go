@@ -4,17 +4,18 @@ import (
 	"encoding/json"
 	"time"
 
-	"gorm.io/gorm"
 )
 
 type Asset struct {
-	gorm.Model
+  ID           uint   `gorm:"primaryKey"`
+	CID           string `gorm:"index;not null" json:"cid"`
 	CreatorWallet string
 	Creator       *User  `gorm:"references:Wallet"`
 	ContentType   string `gorm:"not null" json:"contentType"`
-	OwnerID       uint   `gorm:"not null"`
-	OwnerType     string `gorm:"not null"`
-	CID           string `gorm:"uniqueIndex,not null" json:"cid"`
+	OwnerID       uint
+	OwnerType     string
+  CreatedAt     time.Time      `gorm:"autoCreateTime"`
+  UpdatedAt     time.Time      `gorm:"autoUpdateTime"`
 }
 
 func (a *Asset) MarshalJSON() ([]byte, error) {
