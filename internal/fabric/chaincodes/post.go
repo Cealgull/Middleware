@@ -141,9 +141,7 @@ func createPostCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB)
 			}
 
 			if replyPost != nil {
-				if err := tx.Model(&post).Association("ReplyTo").Append(replyPost); err != nil {
-					return err
-				}
+				var _ = tx.Model(&post).Association("ReplyTo").Append(replyPost)
 			}
 
 			return nil
@@ -294,9 +292,7 @@ func updatePostCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB)
 			}
 
 			if len(postChanged.Assets) != 0 {
-				if err := tx.Model(&post).Association("Assets").Replace(&assets); err != nil {
-					return err
-				}
+				var _ = tx.Model(&post).Association("Assets").Replace(&assets)
 			}
 
 			return tx.Model(&post).
@@ -354,7 +350,7 @@ func upvotePostCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallback 
 
 		if err := db.Model(&Post{}).
 			Preload("Upvotes").
-      Preload("Downvotes").
+			Preload("Downvotes").
 			Where("hash = ?", upvoteBlock.Hash).First(&post).Error; err != nil {
 			return err
 		}
@@ -433,7 +429,7 @@ func downvotePostCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallbac
 		post := Post{}
 
 		if err := db.Model(&Post{}).
-      Preload("Upvotes").
+			Preload("Upvotes").
 			Preload("Downvotes").
 			Where("hash = ?", downvoteBlock.Hash).First(&post).Error; err != nil {
 			return err
