@@ -5,6 +5,8 @@ import (
 	"errors"
 	"net/http"
 
+	"time"
+
 	"github.com/Cealgull/Middleware/internal/fabric/common"
 	. "github.com/Cealgull/Middleware/internal/models"
 	"github.com/Cealgull/Middleware/internal/utils"
@@ -14,7 +16,6 @@ import (
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-	"time"
 	// "gorm.io/hints"
 )
 
@@ -42,10 +43,7 @@ func invokeCreateUser(logger *zap.Logger, db *gorm.DB) ChaincodeInvoke {
 
 		b, _ := json.Marshal(&block)
 
-		b, err := contract.Submit("CreateUser",
-			client.WithBytesArguments(b))
-
-		if err != nil {
+		if _, err := contract.Submit("CreateUser", client.WithBytesArguments(b)); err != nil {
 			chaincodeInvokeFailure := ChaincodeInvokeFailureError{"CreateUser"}
 			return c.JSON(chaincodeInvokeFailure.Status(), chaincodeInvokeFailure.Message())
 		}
@@ -110,10 +108,14 @@ func invokeUpdateUser(logger *zap.Logger, db *gorm.DB) ChaincodeInvoke {
 			}), profile.ActiveRole) || !utils.Contains(utils.Map(userProfile.BadgeRelationsReceived, func(r *BadgeRelation) string {
 				return r.BadgeName
 			}), profile.ActiveBadge) {
-				return errors.New("User does not have the role or badge")
+				return errors.New("user does not have the role or badge")
 			}
 			return nil
 		})
+
+		if err != nil {
+			return c.JSON(chaincodeInternalError.Status(), chaincodeInternalError.Message())
+		}
 
 		b, _ := json.Marshal(&profile)
 
