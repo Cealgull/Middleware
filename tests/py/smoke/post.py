@@ -1,95 +1,147 @@
 from smoke.utils import *
+from smoke.topic import *
 import unittest
-import random
+import time
 
 
 class PostTestCase(unittest.TestCase):
     def setUp(self):
         self.credentials = test_auth_login()
         self.request = get_request_handler(self.credentials)
-
-        num = random.randint(0, 10000000)
-        self.num = num
-
-        self.credential = test_auth_login()
-        self.request = get_request_handler(self.credential)
-
-        self.request(
-            "/api/categoryGroup/invoke/create",
-            {"name": "testGroup" + str(num), "color": "123"},
-        )
-
+        self.num = TopicTestCase.create_plugs(self.request)
+        time.sleep(0.5)
+        self.topic_hash = TopicTestCase.create_topic(self.request, self.num)
         time.sleep(0.5)
 
-        self.request(
-            "/api/category/invoke/create",
-            {
-                "categoryGroup": "testGroup" + str(num),
-                "name": "testCategory" + str(num),
-                "color": "123",
-            },
-        )
-
-        time.sleep(0.5)
-
-        self.request(
-            "/api/tag/invoke/create",
-            {"name": "testTag" + str(num), "color": "123"},
-        )
-
-        time.sleep(0.5)
-
-        res = self.request(
-            "/api/topic/invoke/create",
-            {
-                "title": "test",
-                "content": "test",
-                "images": [],
-                "category": "testCategory" + str(num),
-                "tags": ["testTag" + str(num)],
-            },
-        )
-
-        self.topic_hash = res["hash"]
-
-    def test_0001_create_post(self):
-        time.sleep(0.5)
-        res = self.request(
+    @classmethod
+    def create_post(
+        cls, request: Callable[[str, dict], dict], topic_hash: str, post_hash: str = ""
+    ):
+        return request(
             "/api/post/invoke/create",
             {
                 "content": "this is a testing post",
                 "images": [],
-                "belongTo": self.topic_hash,
-                "replyTo": "",
+                "belongTo": topic_hash,
+                "replyTo": post_hash,
             },
-        )
+        )["hash"]
 
-        return res
-
-    def test_0002_get_query_list(self):
-        self.test_0001_create_post()
-        time.sleep(0.5)
-        res = self.request(
+    @classmethod
+    def query_posts(
+        cls, request: Callable[[str, dict], list | dict], topic_hash: str, wallet: str
+    ):
+        return request(
             "/api/post/query/list",
             {
                 "pageOrdinal": 1,
                 "pageSize": 10,
-                "belongTo": self.topic_hash,
-                "creator": self.credential.wallet,
+                "belongTo": topic_hash,
+                "creator": wallet,
             },
         )
-        print(res)
 
-    def test_003_update_post(self):
-        res = self.test_0001_create_post()
+    def test_0001_create_post(self):
+        self.create_post(self.request, self.topic_hash)
+
+    def test_0002_query_posts(self):
+        for _ in range(20):
+            self.create_post(self.request, self.topic_hash)
         time.sleep(0.5)
-        res = self.request(
-            "/api/post/invoke/update",
-            {
-                "hash": res["hash"],
-                "content": "this is another testing post",
-                "images": [],
-            },
-        )
+        res = self.query_posts(self.request, self.topic_hash, self.credentials.wallet)
+        self.assertEqual(len(res), 10)
+        self.assertEqual(res[0]["creator"]["wallet"], self.credentials.wallet)
+        self.assertEqual(res[0]["content"], "this is a testing post")
 
-        print(res)
+    def test_0003_reply_to_posts(self):
+        hash = self.create_post(self.request, self.topic_hash)
+        time.sleep(0.5)
+        self.create_post(self.request, self.topic_hash, hash)
+        time.sleep(0.5)
+        res = self.query_posts(self.request, self.topic_hash, self.credentials.wallet)[
+            1
+        ]
+        self.assertEqual(res["replyTo"]["hash"], hash)
+
+    def test_0004_delete_posts(self):
+        hash = self.create_post(self.request, self.topic_hash)
+        time.sleep(0.5)
+        self.request(
+            "/api/post/invoke/delete",
+            {"hash": hash, "creator": self.credentials.wallet},
+        )
+        time.sleep(0.5)
+        res = self.query_posts(self.request, self.topic_hash, self.credentials.wallet)
+        self.assertEqual(len(res), 0)
+
+    def test_0005_upvote_posts(self):
+        hash = self.create_post(self.request, self.topic_hash)
+        time.sleep(0.5)
+        self.request("/api/post/invoke/upvote", {"hash": hash})
+        time.sleep(0.5)
+        res = self.query_posts(self.request, self.topic_hash, self.credentials.wallet)[
+            0
+        ]
+        self.assertIn(self.credentials.wallet, res["upvotes"])
+        self.request("/api/post/invoke/upvote", {"hash": hash})
+        time.sleep(0.5)
+        res = self.query_posts(self.request, self.topic_hash, self.credentials.wallet)[
+            0
+        ]
+        self.assertNotIn(self.credentials.wallet, res["upvotes"])
+
+    def test_0005_downvote_posts(self):
+        hash = self.create_post(self.request, self.topic_hash)
+        time.sleep(0.5)
+        self.request("/api/post/invoke/downvote", {"hash": hash})
+        time.sleep(0.5)
+        res = self.query_posts(self.request, self.topic_hash, self.credentials.wallet)[
+            0
+        ]
+        self.assertIn(self.credentials.wallet, res["downvotes"])
+        self.request("/api/post/invoke/downvote", {"hash": hash})
+        time.sleep(0.5)
+        res = self.query_posts(self.request, self.topic_hash, self.credentials.wallet)[
+            0
+        ]
+        self.assertNotIn(self.credentials.wallet, res["downvotes"])
+
+    def test_0006_upvote_downvote_posts(self):
+        hash = self.create_post(self.request, self.topic_hash)
+
+        time.sleep(0.5)
+
+        self.request("/api/post/invoke/upvote", {"hash": hash})
+
+        time.sleep(0.5)
+
+        res = self.query_posts(self.request, self.topic_hash, self.credentials.wallet)[
+            0
+        ]
+        self.assertIn(self.credentials.wallet, res["upvotes"])
+        self.request("/api/post/invoke/downvote", {"hash": hash})
+
+        time.sleep(0.5)
+
+        res = self.query_posts(self.request, self.topic_hash, self.credentials.wallet)[
+            0
+        ]
+        self.assertNotIn(self.credentials.wallet, res["upvotes"])
+        self.assertIn(self.credentials.wallet, res["downvotes"])
+        self.request("/api/post/invoke/upvote", {"hash": hash})
+
+        time.sleep(0.5)
+
+        res = self.query_posts(self.request, self.topic_hash, self.credentials.wallet)[
+            0
+        ]
+        self.assertNotIn(self.credentials.wallet, res["downvotes"])
+        self.assertIn(self.credentials.wallet, res["upvotes"])
+
+    def test_0007_update_posts(self):
+        self.create_post(self.request, self.topic_hash)
+        time.sleep(0.5)
+        self.request("/api/post/invoke/update", {"content": "hello world"})
+        time.sleep(0.5)
+        res = self.query_posts(self.request, self.topic_hash, self.credentials.wallet)[0]
+        self.assertEqual(res["content"], "hello world")
