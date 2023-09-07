@@ -355,7 +355,6 @@ func invokeUpvoteTopic(logger *zap.Logger, db *gorm.DB) ChaincodeInvoke {
 	}
 }
 
-// FIXME: WE NEED TO UNDO DOWNVOTE IF UPVOTED?
 func upvoteTopicCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallback {
 
 	return func(payload []byte) error {
@@ -400,7 +399,6 @@ func upvoteTopicCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallback
 	}
 }
 
-// FIXME: WE NEED TO UNDO UPVOTE IF DOWNVOTED?
 func invokeDownvoteTopic(logger *zap.Logger, db *gorm.DB) ChaincodeInvoke {
 	return func(contract common.Contract, c echo.Context) error {
 		type DownvoteRequest struct {
