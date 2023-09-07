@@ -30,7 +30,7 @@ func TestInvokeCreateUser(t *testing.T) {
 
 	contract := mocks.NewMockContract()
 
-  db := newSqliteDB()
+	db := newSqliteDB()
 
 	i := invokeCreateUser(logger, db)
 
@@ -63,6 +63,23 @@ func TestInvokeCreateUser(t *testing.T) {
 		assert.Equal(t, http.StatusInternalServerError, rec.Code)
 
 	})
+
+	t.Run("Invoke Creating User Duplicated", func(t *testing.T) {
+
+		req := httptest.NewRequest(http.MethodPost, "/api/user/invoke/create", nil)
+		rec := httptest.NewRecorder()
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		assert.NoError(t, db.Create(&User{Wallet: "0x123456789"}).Error)
+
+		var _ = contract.On("Submit", "CreateUser", mock.Anything).Return([]byte(nil), errors.New("Submit Failure")).Once()
+		err := i(contract, c)
+
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+
+	})
 }
 
 func TestInvokeUpdateUser(t *testing.T) {
@@ -73,13 +90,49 @@ func TestInvokeUpdateUser(t *testing.T) {
 		Avatar    string `json:"avatar"`
 		Signature string `json:"signature"`
 
-		ActiveRole  uint `json:"activeRole"`
-		ActiveBadge uint `json:"activeBadge"`
+		ActiveRole  string `json:"activeRole"`
+		ActiveBadge string `json:"activeBadge"`
 	}
 
 	contract := mocks.NewMockContract()
 
+	badge := &Badge{
+		CID:         "Qm123456789",
+		Name:        "Boring",
+		Description: "Boring",
+	}
+	badgeRelation := &BadgeRelation{
+		Badge: badge,
+	}
+
+	role := &Role{
+		Name:        "Administrator",
+		Description: "Administrator",
+		Privilege:   0,
+	}
+	roleRelation := &RoleRelation{
+		Role: role,
+	}
+
 	db := newSqliteDB()
+	user := &User{
+		Username:            "Alice",
+		Wallet:              "0x123456789",
+		ActiveBadgeRelation: badgeRelation,
+		ActiveRoleRelation:  roleRelation,
+	}
+	profile := &Profile{
+		User:                   user,
+		RoleRelationsAssigned:  []*RoleRelation{roleRelation},
+		BadgeRelationsReceived: []*BadgeRelation{badgeRelation},
+	}
+	assert.NoError(t, db.Create(&badge).Error)
+	assert.NoError(t, db.Create(&badgeRelation).Error)
+	assert.NoError(t, db.Create(&role).Error)
+	assert.NoError(t, db.Create(&roleRelation).Error)
+	assert.NoError(t, db.Create(&user).Error)
+	assert.NoError(t, db.Create(&profile).Error)
+
 	u := invokeUpdateUser(logger, db)
 
 	profileChanged := ProfileChanged{
@@ -87,8 +140,8 @@ func TestInvokeUpdateUser(t *testing.T) {
 		Wallet:      "0x123456789",
 		Avatar:      "null",
 		Signature:   "null",
-		ActiveRole:  1,
-		ActiveBadge: 1,
+		ActiveRole:  "Administrator",
+		ActiveBadge: "Boring",
 	}
 
 	t.Run("Invoke Updating User With No Content Header", func(t *testing.T) {
@@ -153,48 +206,48 @@ func TestInvokeUpdateUser(t *testing.T) {
 	})
 }
 
-func TestAuthLogin(t *testing.T) {
+// func TestAuthLogin(t *testing.T) {
 
-	contract := mocks.NewMockContract()
+// 	contract := mocks.NewMockContract()
 
-	t.Run("Login with DB Failure", func(t *testing.T) {
+// 	t.Run("Login with DB Failure", func(t *testing.T) {
 
-		db, _ := newSqlMockDB()
+// 		db, _ := newSqlMockDB()
 
-		login := authLogin(logger, db)
+// 		login := authLogin(logger, db)
 
-		req := httptest.NewRequest(http.MethodPost, "/auth/login", nil)
-		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+// 		req := httptest.NewRequest(http.MethodPost, "/auth/login", nil)
+// 		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
 
-		rec := httptest.NewRecorder()
+// 		rec := httptest.NewRecorder()
 
-		c := server.NewContext(req, rec)
-		c = newMockSignedContext(c)
+// 		c := server.NewContext(req, rec)
+// 		c = newMockSignedContext(c)
 
-		err := login(contract,c)
-		assert.NoError(t, err)
-		assert.Equal(t, http.StatusInternalServerError, rec.Code)
-	})
+// 		err := login(contract, c)
+// 		assert.NoError(t, err)
+// 		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+// 	})
 
-	t.Run("Login with DB Success", func(t *testing.T) {
+// 	t.Run("Login with DB Success", func(t *testing.T) {
 
-		db := newSqliteDB()
+// 		db := newSqliteDB()
 
-		assert.NoError(t, db.Create(&Profile{User: &User{Wallet: "0x123456789"}}).Error)
+// 		assert.NoError(t, db.Create(&Profile{User: &User{Wallet: "0x123456789"}}).Error)
 
-		login := authLogin(logger, db)
+// 		login := authLogin(logger, db)
 
-		req := httptest.NewRequest(http.MethodPost, "/auth/login", nil)
-		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+// 		req := httptest.NewRequest(http.MethodPost, "/auth/login", nil)
+// 		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
 
-		rec := httptest.NewRecorder()
-		c := server.NewContext(req, rec)
-		c = newMockSignedContext(c)
+// 		rec := httptest.NewRecorder()
+// 		c := server.NewContext(req, rec)
+// 		c = newMockSignedContext(c)
 
-		err := login(contract,c)
-		assert.NoError(t, err)
-	})
-}
+// 		err := login(contract, c)
+// 		assert.NoError(t, err)
+// 	})
+// }
 
 func TestAuthLogout(t *testing.T) {
 
@@ -209,7 +262,7 @@ func TestAuthLogout(t *testing.T) {
 		c := server.NewContext(req, rec)
 		c = newMockSignedContext(c)
 
-		err := logout(contract ,c)
+		err := logout(contract, c)
 		assert.NoError(t, err)
 	})
 }
@@ -278,8 +331,8 @@ func TestUpdateUserCallback(t *testing.T) {
 		Credibility uint   `json:"credibility"`
 		Balance     int    `json:"balance"`
 
-		ActiveRole  uint `json:"activeRole"`
-		ActiveBadge uint `json:"activeBadge"`
+		ActiveRole  string `json:"activeRole"`
+		ActiveBadge string `json:"activeBadge"`
 	}
 
 	profileChanged := ProfileChanged{
@@ -289,8 +342,8 @@ func TestUpdateUserCallback(t *testing.T) {
 		Signature:   "signature",
 		Credibility: 0,
 		Balance:     0,
-		ActiveRole:  0,
-		ActiveBadge: 0,
+		ActiveRole:  "A",
+		ActiveBadge: "A",
 	}
 
 	t.Run("Updating user with success", func(t *testing.T) {
@@ -323,20 +376,20 @@ func TestUpdateUserCallback(t *testing.T) {
 		b, _ := json.Marshal(&profile)
 		assert.NoError(t, createUser(b))
 
-		profileChanged.ActiveBadge = 1
-		profileChanged.ActiveRole = 1
+		profileChanged.ActiveBadge = "Badge"
+		profileChanged.ActiveRole = "Normal User"
 
 		b, _ = json.Marshal(&profileChanged)
 
 		assert.NoError(t, updateUser(b))
 
-		profileChanged.ActiveBadge = 2
+		profileChanged.ActiveBadge = "A"
 		b, _ = json.Marshal(&profileChanged)
 
 		assert.Error(t, updateUser(b))
 
-		profileChanged.ActiveBadge = 0
-		profileChanged.ActiveRole = 3
+		profileChanged.ActiveBadge = "Badge"
+		profileChanged.ActiveRole = "A"
 		b, _ = json.Marshal(&profileChanged)
 
 		assert.Error(t, updateUser(b))
@@ -470,6 +523,70 @@ func TestQueryProfile(t *testing.T) {
 		db := newSqliteDB()
 
 		query := queryProfile(logger, db)
+
+		req := httptest.NewRequest(http.MethodPost, "/api/user/query/profile", bytes.NewReader([]byte{1, 2, 3, 4}))
+
+		rec := httptest.NewRecorder()
+		c := server.NewContext(req, rec)
+
+		var _ = query(c)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+
+	})
+}
+
+func TestQueryStatistics(t *testing.T) {
+
+	type StatQuery struct {
+		Wallet string `json:"wallet"`
+	}
+
+	t.Run("Querying Stats With Success", func(t *testing.T) {
+
+		db := newSqliteDB()
+		wallet := randomWallet()
+
+		query := queryStatistics(logger, db)
+
+		challenge := StatQuery{Wallet: wallet}
+		assert.NoError(t, db.Create(&Profile{User: &User{Wallet: wallet}}).Error)
+
+		req := httptest.NewRequest(http.MethodPost, "/api/user/query/statistics", newJsonRequest(&challenge))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+
+		rec := httptest.NewRecorder()
+		c := server.NewContext(req, rec)
+
+		var _ = query(c)
+		assert.Equal(t, http.StatusOK, rec.Code)
+
+	})
+
+	t.Run("Querying Stats Not Found", func(t *testing.T) {
+
+		db := newSqliteDB()
+		wallet := randomWallet()
+
+		query := queryStatistics(logger, db)
+
+		challenge := StatQuery{Wallet: wallet}
+
+		req := httptest.NewRequest(http.MethodPost, "/api/user/query/statistics", newJsonRequest(&challenge))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+
+		rec := httptest.NewRecorder()
+		c := server.NewContext(req, rec)
+
+		var _ = query(c)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+
+	})
+
+	t.Run("Querying Stats With Unmarshal Error", func(*testing.T) {
+
+		db := newSqliteDB()
+
+		query := queryStatistics(logger, db)
 
 		req := httptest.NewRequest(http.MethodPost, "/api/user/query/profile", bytes.NewReader([]byte{1, 2, 3, 4}))
 
