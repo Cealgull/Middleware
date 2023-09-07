@@ -16,14 +16,19 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-func invokeCreateUser(logger *zap.Logger) ChaincodeInvoke {
+func invokeCreateUser(logger *zap.Logger, db *gorm.DB) ChaincodeInvoke {
 	return func(contract common.Contract, c echo.Context) error {
 
 		s, _ := session.Get("session", c)
 
 		wallet := s.Values["wallet"].(string)
-
-		profile := ProfileBlock{
+    
+    if err := db.Model(&User{}).Select("Wallet").Where("wallet = ?").First(&User{}).Error; err == nil {
+      chaincodeDuplicateError := ChaincodeDuplicatedError{"User"}
+      return c.JSON(chaincodeDuplicateError.Status(), chaincodeDuplicateError.Message())
+    }
+    
+		block := ProfileBlock{
 			Username:  "Alice",
 			Wallet:    wallet,
 			Signature: "Alice's signature",
@@ -31,9 +36,9 @@ func invokeCreateUser(logger *zap.Logger) ChaincodeInvoke {
 			Banned:    false,
 		}
 
-		logger.Debug("Invoke Creating User", zap.String("wallet", profile.Wallet))
+		logger.Debug("Invoke Creating User", zap.String("wallet", block.Wallet))
 
-		b, _ := json.Marshal(&profile)
+		b, _ := json.Marshal(&block)
 
 		b, err := contract.Submit("CreateUser",
 			client.WithBytesArguments(b))
@@ -43,7 +48,24 @@ func invokeCreateUser(logger *zap.Logger) ChaincodeInvoke {
 			return c.JSON(chaincodeInvokeFailure.Status(), chaincodeInvokeFailure.Message())
 		}
 
-		return c.JSON(success.Status(), success.Message())
+		user := User{
+				Username:            block.Username,
+				Wallet:              block.Wallet,
+				Avatar:              block.Avatar,
+				Muted:               block.Muted,
+				Banned:              block.Banned,
+				ActiveRoleRelation:  nil,
+				ActiveBadgeRelation: nil,
+		}
+
+		profile := Profile{
+				Signature:   block.Signature,
+				Balance:     block.Balance,
+				Credibility: block.Credibility,
+				User:        &user,
+		}
+
+		return c.JSON(success.Status(), &profile)
 
 	}
 }
@@ -209,7 +231,7 @@ func updateUserCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallback 
 }
 
 func authLogin(logger *zap.Logger, db *gorm.DB) ChaincodeCustom {
-	return func(c echo.Context) error {
+	return func(contract common.Contract, c echo.Context) error {
 		s, _ := session.Get("session", c)
 		wallet := s.Values["wallet"].(string)
 
@@ -221,8 +243,7 @@ func authLogin(logger *zap.Logger, db *gorm.DB) ChaincodeCustom {
 			Preload("User.ActiveRoleRelation").
 			Where("user_wallet = ?", wallet).
 			First(&profile).Error; err != nil {
-
-			return c.JSON(chaincodeInternalError.Status(), chaincodeInternalError.Message())
+      return invokeCreateUser(logger, db)(contract, c)
 		}
 
 		return c.JSON(http.StatusOK, &profile)
@@ -230,7 +251,7 @@ func authLogin(logger *zap.Logger, db *gorm.DB) ChaincodeCustom {
 }
 
 func authLogout(logger *zap.Logger, db *gorm.DB) ChaincodeCustom {
-	return func(c echo.Context) error {
+	return func(contract common.Contract, c echo.Context) error {
 		s, _ := session.Get("session", c)
 
 		s.Options.MaxAge = -1
@@ -302,7 +323,6 @@ func NewUserProfileMiddleware(logger *zap.Logger, net common.Network, db *gorm.D
 
 	return NewChaincodeMiddleware(logger, net, net.GetContract("userprofile"),
 
-		WithChaincodeHandler("create", "CreateUser", invokeCreateUser(logger), createUserCallback(logger, db)),
 		WithChaincodeHandler("update", "UpdateUser", invokeUpdateUser(logger, db), updateUserCallback(logger, db)),
 
 		WithChaincodeQuery("profile", queryProfile(logger, db)),

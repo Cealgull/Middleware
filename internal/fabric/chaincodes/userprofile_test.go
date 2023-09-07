@@ -30,7 +30,9 @@ func TestInvokeCreateUser(t *testing.T) {
 
 	contract := mocks.NewMockContract()
 
-	i := invokeCreateUser(logger)
+  db := newSqliteDB()
+
+	i := invokeCreateUser(logger, db)
 
 	t.Run("Invoke Creating User Normally", func(t *testing.T) {
 
@@ -153,6 +155,8 @@ func TestInvokeUpdateUser(t *testing.T) {
 
 func TestAuthLogin(t *testing.T) {
 
+	contract := mocks.NewMockContract()
+
 	t.Run("Login with DB Failure", func(t *testing.T) {
 
 		db, _ := newSqlMockDB()
@@ -167,7 +171,7 @@ func TestAuthLogin(t *testing.T) {
 		c := server.NewContext(req, rec)
 		c = newMockSignedContext(c)
 
-		err := login(c)
+		err := login(contract,c)
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	})
@@ -187,12 +191,14 @@ func TestAuthLogin(t *testing.T) {
 		c := server.NewContext(req, rec)
 		c = newMockSignedContext(c)
 
-		err := login(c)
+		err := login(contract,c)
 		assert.NoError(t, err)
 	})
 }
 
 func TestAuthLogout(t *testing.T) {
+
+	contract := mocks.NewMockContract()
 
 	logout := authLogout(logger, nil)
 
@@ -203,7 +209,7 @@ func TestAuthLogout(t *testing.T) {
 		c := server.NewContext(req, rec)
 		c = newMockSignedContext(c)
 
-		err := logout(c)
+		err := logout(contract ,c)
 		assert.NoError(t, err)
 	})
 }

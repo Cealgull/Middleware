@@ -15,7 +15,7 @@ type ChaincodeEventCallback func(payload []byte) error
 
 type ChaincodeQuery echo.HandlerFunc
 
-type ChaincodeCustom echo.HandlerFunc
+type ChaincodeCustom func(contract common.Contract, c echo.Context) error
 
 type ChaincodeMiddleware struct {
 	name     string
@@ -97,7 +97,7 @@ func (cc *ChaincodeMiddleware) Register(g *echo.Group, e *echo.Echo) {
 	for location, custom := range cc.custom {
 		e.POST(location, func(custom ChaincodeCustom) echo.HandlerFunc {
 			return func(c echo.Context) error {
-				return custom(c)
+				return custom(cc.contract,c)
 			}
 		}(custom))
 	}
