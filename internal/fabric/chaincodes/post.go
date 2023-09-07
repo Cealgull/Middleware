@@ -151,6 +151,70 @@ func createPostCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB)
 	}
 }
 
+func invokeDeletePost(logger *zap.Logger, db *gorm.DB) ChaincodeInvoke {
+
+	return func(contract common.Contract, c echo.Context) error {
+
+		type DeleteRequest struct {
+			Hash string `json:"hash"`
+		}
+
+		deleteRequest := DeleteRequest{}
+
+		if err := c.Bind(&deleteRequest); err != nil {
+			return c.JSON(chaincodeDeserializationError.Status(), chaincodeDeserializationError.Message())
+		}
+
+		s, _ := session.Get("session", c)
+		wallet := s.Values["wallet"].(string)
+
+		post := Post{}
+		if err := db.Model(&Post{}).
+			Where("hash = ?", deleteRequest.Hash).First(&post).Error; err != nil {
+			return err
+		}
+
+		if post.CreatorWallet != wallet {
+			// TODO: return auth error
+			return c.JSON(chaincodeDeserializationError.Status(), chaincodeDeserializationError.Message())
+		}
+
+		deleteBlock := DeleteBlock{
+			Hash:    deleteRequest.Hash,
+			Creator: wallet,
+		}
+
+		b, _ := json.Marshal(&deleteBlock)
+
+		if _, err := contract.Submit("DeletePost", client.WithBytesArguments(b)); err != nil {
+			chaincodeInvokeFailure := ChaincodeInvokeFailureError{"DeletePost"}
+			return c.JSON(chaincodeInvokeFailure.Status(), chaincodeInvokeFailure.Message())
+		}
+
+		return c.JSON(success.Status(), success.Message())
+	}
+}
+
+func deletePostCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallback {
+
+	return func(payload []byte) error {
+
+		deleteBlock := DeleteBlock{}
+
+		var _ = json.Unmarshal(payload, &deleteBlock)
+
+		return db.Transaction(func(tx *gorm.DB) error {
+
+			post := Post{}
+			if err := tx.Where("hash = ?", deleteBlock.Hash).First(&post).Error; err != nil {
+				return err
+			}
+
+			return tx.Delete(&post).Error
+		})
+	}
+}
+
 func invokeUpdatePost(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) ChaincodeInvoke {
 	return func(contract common.Contract, c echo.Context) error {
 		type ChangePostRequest struct {
@@ -464,6 +528,7 @@ func NewPostChaincodeMiddleware(logger *zap.Logger, net common.Network, ipfs *ip
 
 		WithChaincodeHandler("upvote", "UpvotePost", invokeUpvotePost(logger, db), upvotePostCallback(logger, db)),
 		WithChaincodeHandler("downvote", "DownvotePost", invokeDownvotePost(logger, db), downvotePostCallback(logger, db)),
+		WithChaincodeHandler("delete", "DeletePost", invokeDeletePost(logger, db), deletePostCallback(logger, db)),
 
 		WithChaincodeQuery("list", queryPostsList(logger, db)),
 	)
