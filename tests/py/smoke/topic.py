@@ -153,3 +153,13 @@ class TopicTestCase(unittest.TestCase):
         )
 
         time.sleep(0.5)
+
+    def test_007_invoke_delete_topics(self):
+        hash = self.create_topic(self.request, self.num)
+        time.sleep(0.5)
+        self.request(
+            "/api/topic/invoke/delete",
+            {"hash": hash, "creator": self.credential.wallet},
+        )
+        time.sleep(0.5)
+        print(self.query_topics(self.request, self.num))
