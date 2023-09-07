@@ -354,6 +354,7 @@ func upvotePostCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallback 
 
 		if err := db.Model(&Post{}).
 			Preload("Upvotes").
+      Preload("Downvotes").
 			Where("hash = ?", upvoteBlock.Hash).First(&post).Error; err != nil {
 			return err
 		}
@@ -432,6 +433,7 @@ func downvotePostCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallbac
 		post := Post{}
 
 		if err := db.Model(&Post{}).
+      Preload("Upvotes").
 			Preload("Downvotes").
 			Where("hash = ?", downvoteBlock.Hash).First(&post).Error; err != nil {
 			return err
@@ -488,9 +490,13 @@ func queryPostsList(logger *zap.Logger, db *gorm.DB) ChaincodeQuery {
 		err := db.Transaction(func(tx *gorm.DB) error {
 
 			tx = tx.Model(&Post{}).
+        Preload("Creator").
 				Preload("ReplyTo").
 				Preload("ReplyTo.Creator").
 				Preload("ReplyTo.Assets").
+        Preload("Upvotes").
+        Preload("Downvotes").
+        Preload("BelongTo").
 				Scopes(paginate(q.PageOrdinal, q.PageSize))
 
 			if q.Creator != "" {
