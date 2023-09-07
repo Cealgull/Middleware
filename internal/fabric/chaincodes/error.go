@@ -114,6 +114,25 @@ func (f *ChaincodeQueryParameterError) Message() *proto.ResponseMessage {
 }
 
 
+type ChaincodeDuplicatedError struct {
+  field string
+}
+
+func (f *ChaincodeDuplicatedError) Error() string {
+  return "Chaincode: Duplicated " + f.field
+}
+
+func (f *ChaincodeDuplicatedError) Status() int {
+  return http.StatusBadRequest
+}
+
+func (f *ChaincodeDuplicatedError) Message() *proto.ResponseMessage {
+  return &proto.ResponseMessage{
+    Code:    "C1007",
+    Message: f.Error(),
+  }
+}
+
 
 var success *proto.Success = &proto.Success{}
 var chaincodeInternalError *ChaincodeInternalError = &ChaincodeInternalError{}
