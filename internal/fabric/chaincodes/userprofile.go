@@ -357,31 +357,28 @@ func queryStatistics(logger *zap.Logger, db *gorm.DB) ChaincodeQuery {
 			topicsCreatedQuery := tx.Table("topics").Select("COUNT(*) as topics_created").Where("creator_wallet = (?)", q.Wallet)
 			registerDateQuery := tx.Table("users").Select("created_at as register_date").Where("wallet = (?)", q.Wallet)
 
-      upvotesPostsReceivedQuery := tx.Table("upvotes").
-        Select("COUNT (*) as u1").
-        Where("owner_type = ?", "posts").
-        Joins("inner join (?) as p on p.id = upvotes.id",
-        db.Model(&Post{}).Where("creator_wallet = ?", q.Wallet))
-      
-      upvotesTopicReceivedQuery := tx.Table("upvotes").
-      Select("COUNT (*) as u2").
-      Where("owner_type = ?", "topics").
-      Joins("inner join (?) as t on t.id = upvotes.id",
-        db.Model(&Topic{}).Where("creator_wallet = ?", q.Wallet))
+			upvotesPostsReceivedQuery := tx.Table("upvotes").
+				Select("COUNT (*) as u1").
+				Where("owner_type = ?", "posts").
+				Joins("inner join (?) as p on p.id = upvotes.id",
+					db.Model(&Post{}).Where("creator_wallet = ?", q.Wallet))
 
-      upvotesReceivedQuery := tx.Table("(?) as u1, (?) as u2", upvotesPostsReceivedQuery, upvotesTopicReceivedQuery).Select("(u1 + u2) as upvotes_received")
+			upvotesTopicReceivedQuery := tx.Table("upvotes").
+				Select("COUNT (*) as u2").
+				Where("owner_type = ?", "topics").
+				Joins("inner join (?) as t on t.id = upvotes.id",
+					db.Model(&Topic{}).Where("creator_wallet = ?", q.Wallet))
+
+			upvotesReceivedQuery := tx.Table("(?) as u1, (?) as u2", upvotesPostsReceivedQuery, upvotesTopicReceivedQuery).Select("(u1 + u2) as upvotes_received")
 
 			if err := tx.Table("(?) as upvoted_granted, (?) as upvotes_received, (?) as posts_created, (?) as topics_created, (?) as register_date",
 				upvotesGrantedQuery,
-        upvotesReceivedQuery,
+				upvotesReceivedQuery,
 				postsCreatedQuery,
 				topicsCreatedQuery,
 				registerDateQuery).Scan(r).Error; err != nil {
 				return err
 			}
-
-
-
 
 			return nil
 
