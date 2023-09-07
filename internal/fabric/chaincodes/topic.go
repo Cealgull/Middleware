@@ -333,6 +333,13 @@ func upvoteTopicCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallback
 				}
 			}
 
+			for _, d := range topic.Downvotes {
+				if d.CreatorWallet == upvote.CreatorWallet {
+					tx.Model(&topic).Association("Downvotes").Delete(d)
+					break
+				}
+			}
+
 			var _ = tx.Model(&topic).Association("Upvotes").Append(&upvote)
 
 			return nil
@@ -405,6 +412,14 @@ func downvoteTopicCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallba
 					return nil
 				}
 			}
+
+			for _, u := range topic.Downvotes {
+				if u.CreatorWallet == downvote.CreatorWallet {
+					tx.Model(&topic).Association("Upvotes").Delete(u)
+					break
+				}
+			}
+
 			var _ = tx.Model(&topic).Association("Downvotes").Append(&downvote)
 			return nil
 		})
