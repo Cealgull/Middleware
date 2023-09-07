@@ -46,30 +46,32 @@ func NewOffchainStore(dialector gorm.Dialector, seed bool) (*gorm.DB, error) {
 		return nil, err
 	}
 
-	if err := db.AutoMigrate(
+	if !db.Migrator().HasTable(&User{}) {
+		if err := db.AutoMigrate(
 
-		Role{},
-		Badge{},
-		Upvote{},
-		Downvote{},
-		Asset{},
+			Role{},
+			Badge{},
+			Upvote{},
+			Downvote{},
+			Asset{},
 
-		User{},
-		Profile{},
-		Topic{},
-		Post{},
-		Tag{},
-		TagRelation{},
-		OwnedToken{},
-		TradedToken{},
+			User{},
+			Profile{},
+			Topic{},
+			Post{},
+			Tag{},
+			TagRelation{},
+			OwnedToken{},
+			TradedToken{},
 
-		CategoryGroup{},
-		Category{},
-		CategoryRelation{},
-		RoleRelation{},
-		BadgeRelation{},
-	); err != nil {
-		return nil, err
+			CategoryGroup{},
+			Category{},
+			CategoryRelation{},
+			RoleRelation{},
+			BadgeRelation{},
+		); err != nil {
+			return nil, err
+		}
 	}
 
 	if seed {
