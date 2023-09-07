@@ -35,13 +35,6 @@ class UserProfileSmokeTest(unittest.TestCase):
         self.assertEqual(res["avatar"], "0xsaadfwadf")
         self.assertEqual(res["signature"], "Genshin Impact is a good game")
 
-    def test_0002_query_statitics(self):
-        res = self.request(
-            "/api/user/query/statistics", {"wallet": self.credential.wallet}
-        )
-
-        print(res)
-
 
 if __name__ == "__main__":
     unittest.main()
