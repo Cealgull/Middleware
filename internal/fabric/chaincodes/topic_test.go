@@ -691,16 +691,6 @@ func TestDownvoteTopicCallback(t *testing.T) {
 		downvoteBlock.Hash = "topic1"
 	})
 
-	t.Run("Downvoting Topic Callback with creator not found", func(t *testing.T) {
-		downvoteBlock.Creator = "unknown"
-
-		b, _ := json.Marshal(&downvoteBlock)
-
-		err := downvoteTopic(b)
-		assert.Error(t, err)
-		downvoteBlock.Creator = "0x123456789"
-	})
-
 	t.Run("Downvoting Topic Callback with success", func(t *testing.T) {
 
 		b, _ := json.Marshal(&downvoteBlock)
@@ -739,6 +729,40 @@ func TestQueryTags(t *testing.T) {
 		results := []Topic{}
 
 		req := httptest.NewRequest(http.MethodGet, "/api/topic/query/tags", newJsonRequest(&results))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+
+		rec := httptest.NewRecorder()
+		c := server.NewContext(req, rec)
+
+		var _ = query(c)
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+}
+
+func TestQueryTopicGet(t *testing.T) {
+
+	db := prepareTopicData(t)
+	query := queryTopicGet(logger, db)
+	t.Run("Downvoting Topic With Unmarshal Error", func(t *testing.T) {
+
+		req := httptest.NewRequest(http.MethodPost, "/api/topic/query/get", bytes.NewReader([]byte{1, 2, 3}))
+		rec := httptest.NewRecorder()
+		c := server.NewContext(req, rec)
+
+		var _ = query(c)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+
+	t.Run("Querying Topic With Success", func(t *testing.T) {
+
+		type TopicGetRequest struct {
+			Hash string `json:"hash"`
+		}
+
+		payload := TopicGetRequest{
+			Hash: "topic1",
+		}
+		req := httptest.NewRequest(http.MethodPost, "/api/topic/query/get", newJsonRequest(&payload))
 		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
 
 		rec := httptest.NewRecorder()

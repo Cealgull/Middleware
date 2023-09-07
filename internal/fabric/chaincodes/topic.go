@@ -241,12 +241,12 @@ func updateTopicCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB
 			}
 		})
 
-    tagsAssigned := utils.Map(topicChanged.Tags, func(t string) *TagRelation {
-      return &TagRelation{
-        TagName: t,
-      }
-    })
-    
+		tagsAssigned := utils.Map(topicChanged.Tags, func(t string) *TagRelation {
+			return &TagRelation{
+				TagName: t,
+			}
+		})
+
 		topic := Topic{}
 
 		return db.Transaction(func(tx *gorm.DB) error {
@@ -257,11 +257,11 @@ func updateTopicCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB
 			}
 
 			return tx.Model(&topic).
-        Updates(&Topic{Title: topicChanged.Title,
-          Content: string(data),
-          TagsAssigned: tagsAssigned,
-          CategoryAssigned: &CategoryRelation{CategoryName: topicChanged.Category},
-          Assets: assets}).Error
+				Updates(&Topic{Title: topicChanged.Title,
+					Content:          string(data),
+					TagsAssigned:     tagsAssigned,
+					CategoryAssigned: &CategoryRelation{CategoryName: topicChanged.Category},
+					Assets:           assets}).Error
 
 		})
 	}
@@ -330,6 +330,13 @@ func upvoteTopicCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallback
 				if u.CreatorWallet == upvote.CreatorWallet {
 					tx.Model(&topic).Association("Upvotes").Delete(u)
 					return nil
+				}
+			}
+
+			for _, d := range topic.Downvotes {
+				if d.CreatorWallet == upvote.CreatorWallet {
+					tx.Model(&topic).Association("Downvotes").Delete(d)
+					break
 				}
 			}
 
@@ -405,6 +412,14 @@ func downvoteTopicCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallba
 					return nil
 				}
 			}
+
+			for _, u := range topic.Downvotes {
+				if u.CreatorWallet == downvote.CreatorWallet {
+					tx.Model(&topic).Association("Upvotes").Delete(u)
+					break
+				}
+			}
+
 			var _ = tx.Model(&topic).Association("Downvotes").Append(&downvote)
 			return nil
 		})
@@ -426,6 +441,45 @@ func queryTags(logger *zap.Logger, db *gorm.DB) ChaincodeQuery {
 		var _ = db.Find(&tags).Error
 
 		return c.JSON(success.Status(), tags)
+	}
+}
+
+func queryTopicGet(logger *zap.Logger, db *gorm.DB) ChaincodeQuery {
+	return func(c echo.Context) error {
+		type QueryRequest struct {
+			Hash string `json:"hash"`
+		}
+
+		q := QueryRequest{}
+		if c.Bind(&q) != nil {
+			return c.JSON(chaincodeDeserializationError.Status(), chaincodeDeserializationError.Message())
+		}
+
+		topic := Topic{}
+
+		err := db.Transaction(func(tx *gorm.DB) error {
+
+			tx = tx.Model(&Topic{}).
+				Preload("CategoryAssigned").
+				Preload("TagsAssigned").
+				Preload("Upvotes").
+				Preload("Downvotes").
+				Preload("Assets").
+				Where("hash = ?", q.Hash)
+
+			if err := tx.First(&topic).Error; err != nil {
+				return err
+			}
+
+			return nil
+		})
+
+		if err != nil {
+			return c.JSON(chaincodeInternalError.Status(), chaincodeInternalError.Message())
+		}
+
+		return c.JSON(success.Status(), topic)
+
 	}
 }
 
