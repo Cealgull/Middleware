@@ -134,6 +134,70 @@ func createTopicCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB
 	}
 }
 
+func invokeDeleteTopic(logger *zap.Logger, db *gorm.DB) ChaincodeInvoke {
+
+	return func(contract common.Contract, c echo.Context) error {
+
+		type DeleteRequest struct {
+			Hash string `json:"hash"`
+		}
+
+		deleteRequest := DeleteRequest{}
+
+		if err := c.Bind(&deleteRequest); err != nil {
+			return c.JSON(chaincodeDeserializationError.Status(), chaincodeDeserializationError.Message())
+		}
+
+		s, _ := session.Get("session", c)
+		wallet := s.Values["wallet"].(string)
+
+		topic := Topic{}
+		if err := db.Model(&Topic{}).
+			Where("hash = ?", deleteRequest.Hash).First(&topic).Error; err != nil {
+			return err
+		}
+
+		if topic.CreatorWallet != wallet {
+			// TODO: return auth error
+			return c.JSON(chaincodeDeserializationError.Status(), chaincodeDeserializationError.Message())
+		}
+
+		deleteBlock := DeleteBlock{
+			Hash:    deleteRequest.Hash,
+			Creator: wallet,
+		}
+
+		b, _ := json.Marshal(&deleteBlock)
+
+		if _, err := contract.Submit("DeleteTopic", client.WithBytesArguments(b)); err != nil {
+			chaincodeInvokeFailure := ChaincodeInvokeFailureError{"DeleteTopic"}
+			return c.JSON(chaincodeInvokeFailure.Status(), chaincodeInvokeFailure.Message())
+		}
+
+		return c.JSON(success.Status(), success.Message())
+	}
+}
+
+func deleteTopicCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallback {
+
+	return func(payload []byte) error {
+
+		deleteBlock := DeleteBlock{}
+
+		var _ = json.Unmarshal(payload, &deleteBlock)
+
+		return db.Transaction(func(tx *gorm.DB) error {
+
+			topic := Topic{}
+			if err := tx.Where("hash = ?", deleteBlock.Hash).First(&topic).Error; err != nil {
+				return err
+			}
+
+			return tx.Delete(&topic).Error
+		})
+	}
+}
+
 func invokeUpdateTopic(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) ChaincodeInvoke {
 	return func(contract common.Contract, c echo.Context) error {
 		type ChangeTopicRequest struct {
@@ -547,6 +611,8 @@ func NewTopicChaincodeMiddleware(logger *zap.Logger, net common.Network, ipfs *i
 
 		WithChaincodeHandler("create", "CreateTopic", invokeCreateTopic(logger, ipfs, db), createTopicCallback(logger, ipfs, db)),
 		WithChaincodeHandler("update", "UpdateTopic", invokeUpdateTopic(logger, ipfs, db), updateTopicCallback(logger, ipfs, db)),
+
+		WithChaincodeHandler("delete", "DeleteTopic", invokeDeleteTopic(logger, db), deleteTopicCallback(logger, db)),
 
 		WithChaincodeHandler("upvote", "UpvoteTopic", invokeUpvoteTopic(logger, db), upvoteTopicCallback(logger, db)),
 		WithChaincodeHandler("downvote", "DownvoteTopic", invokeDownvoteTopic(logger, db), downvoteTopicCallback(logger, db)),

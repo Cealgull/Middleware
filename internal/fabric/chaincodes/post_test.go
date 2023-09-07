@@ -320,6 +320,109 @@ func TestCreatePostCallback(t *testing.T) {
 
 }
 
+func TestInvokeDeletePost(t *testing.T) {
+	type DeleteRequest struct {
+		Hash string `json:"hash"`
+	}
+
+	payload := DeleteRequest{
+		Hash: "post1",
+	}
+
+	contract := fabricmock.NewMockContract()
+	db := preparePostData(t)
+
+	deletePost := invokeDeletePost(logger, db)
+
+	t.Run("Deleting Post With Unmarshal Error", func(t *testing.T) {
+
+		req := httptest.NewRequest(http.MethodPost, "/api/post/invoke/DeletePost", bytes.NewReader([]byte{1, 2, 3}))
+		rec := httptest.NewRecorder()
+
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		err := deletePost(contract, c)
+
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+
+	t.Run("Deleting Post With Hash Error", func(t *testing.T) {
+		payload.Hash = "a111"
+		req := httptest.NewRequest(http.MethodPost, "/api/post/invoke/DeletePost", newJsonRequest(&payload))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+
+		rec := httptest.NewRecorder()
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		err := deletePost(contract, c)
+
+		assert.Error(t, err)
+		payload.Hash = "post1"
+	})
+
+	t.Run("Deleting Post With Chaincode Network Failure", func(t *testing.T) {
+
+		req := httptest.NewRequest(http.MethodPost, "/api/post/invoke/DeletePost", newJsonRequest(&payload))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+
+		rec := httptest.NewRecorder()
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		contract.On("Submit", "DeletePost", mock.Anything).Return([]byte(nil), errors.New("Hello world")).Once()
+		err := deletePost(contract, c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+
+	})
+
+	t.Run("Deleting Post With Success", func(t *testing.T) {
+
+		req := httptest.NewRequest(http.MethodPost, "/api/post/invoke/DeletePost", newJsonRequest(&payload))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+
+		rec := httptest.NewRecorder()
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		contract.On("Submit", "DeletePost", mock.Anything).Return([]byte(nil), nil).Once()
+		err := deletePost(contract, c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+}
+
+func TestDeletePostCallback(t *testing.T) {
+	payload := DeleteBlock{
+		Hash:    "post1",
+		Creator: "0x123456789",
+	}
+
+	db := preparePostData(t)
+	deletePost := deletePostCallback(logger, db)
+
+	t.Run("Deleting Post Callback with hash not found", func(t *testing.T) {
+		payload.Hash = "unknown"
+
+		b, _ := json.Marshal(&payload)
+
+		err := deletePost(b)
+		assert.Error(t, err)
+		payload.Hash = "post1"
+	})
+
+	t.Run("Deleting Post Callback with success", func(t *testing.T) {
+
+		b, _ := json.Marshal(&payload)
+
+		err := deletePost(b)
+		assert.NoError(t, err)
+	})
+}
+
 func TestInvokeUpdatePost(t *testing.T) {
 	type UpdatePostRequest struct {
 		Hash    string   `json:"hash"`
@@ -784,7 +887,7 @@ func TestQueryPostsList(t *testing.T) {
 
 		err := query(c)
 		assert.NoError(t, err)
-		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
 		payload.PageOrdinal = 1
 	})
 

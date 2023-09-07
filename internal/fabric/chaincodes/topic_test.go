@@ -283,6 +283,109 @@ func TestCreateTopicCallback(t *testing.T) {
 
 }
 
+func TestInvokeDeleteTopic(t *testing.T) {
+	type DeleteRequest struct {
+		Hash string `json:"hash"`
+	}
+
+	payload := DeleteRequest{
+		Hash: "topic1",
+	}
+
+	contract := fabricmock.NewMockContract()
+	db := prepareTopicData(t)
+
+	deleteTopic := invokeDeleteTopic(logger, db)
+
+	t.Run("Deleting Topic With Unmarshal Error", func(t *testing.T) {
+
+		req := httptest.NewRequest(http.MethodPost, "/api/topic/invoke/DeleteTopic", bytes.NewReader([]byte{1, 2, 3}))
+		rec := httptest.NewRecorder()
+
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		err := deleteTopic(contract, c)
+
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+
+	t.Run("Deleting Topic With Hash Error", func(t *testing.T) {
+		payload.Hash = "a111"
+		req := httptest.NewRequest(http.MethodPost, "/api/topic/invoke/DeleteTopic", newJsonRequest(&payload))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+
+		rec := httptest.NewRecorder()
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		err := deleteTopic(contract, c)
+
+		assert.Error(t, err)
+		payload.Hash = "topic1"
+	})
+
+	t.Run("Deleting Topic With Chaincode Network Failure", func(t *testing.T) {
+
+		req := httptest.NewRequest(http.MethodPost, "/api/topic/invoke/DeleteTopic", newJsonRequest(&payload))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+
+		rec := httptest.NewRecorder()
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		contract.On("Submit", "DeleteTopic", mock.Anything).Return([]byte(nil), errors.New("Hello world")).Once()
+		err := deleteTopic(contract, c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+
+	})
+
+	t.Run("Deleting Topic With Success", func(t *testing.T) {
+
+		req := httptest.NewRequest(http.MethodPost, "/api/topic/invoke/DeleteTopic", newJsonRequest(&payload))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+
+		rec := httptest.NewRecorder()
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		contract.On("Submit", "DeleteTopic", mock.Anything).Return([]byte(nil), nil).Once()
+		err := deleteTopic(contract, c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+}
+
+func TestDeleteTopicCallback(t *testing.T) {
+	payload := DeleteBlock{
+		Hash:    "topic1",
+		Creator: "0x123456789",
+	}
+
+	db := prepareTopicData(t)
+	deleteTopic := deleteTopicCallback(logger, db)
+
+	t.Run("Deleting Topic Callback with hash not found", func(t *testing.T) {
+		payload.Hash = "unknown"
+
+		b, _ := json.Marshal(&payload)
+
+		err := deleteTopic(b)
+		assert.Error(t, err)
+		payload.Hash = "topic1"
+	})
+
+	t.Run("Deleting Topic Callback with success", func(t *testing.T) {
+
+		b, _ := json.Marshal(&payload)
+
+		err := deleteTopic(b)
+		assert.NoError(t, err)
+	})
+}
+
 func TestInvokeUpdateTopic(t *testing.T) {
 	type UpdateTopicRequest struct {
 		Hash    string   `json:"hash"`
