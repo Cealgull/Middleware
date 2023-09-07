@@ -18,6 +18,8 @@ import (
 	"gorm.io/gorm"
 )
 
+const NONE = "~~NONE~~"
+
 func invokeCreateTopic(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) ChaincodeInvoke {
 
 	return func(contract common.Contract, c echo.Context) error {
@@ -58,24 +60,6 @@ func invokeCreateTopic(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) 
 			return c.JSON(err.Status(), err.Message())
 		}
 
-		images := make([]string, len(topicRequest.Images))
-
-		for i, imageb64 := range topicRequest.Images {
-
-			data, err := base64.StdEncoding.DecodeString(imageb64)
-
-			if err != nil {
-				return c.JSON(chaincodeBase64DecodeError.Status(), chaincodeBase64DecodeError.Message())
-			}
-
-			if cid, err := ipfs.Put(bytes.NewReader(data)); err != nil {
-				return c.JSON(err.Status(), err.Message())
-			} else {
-				images[i] = cid
-			}
-
-		}
-
 		topicBlock := TopicBlock{
 			Title:    topicRequest.Title,
 			CID:      CID,
@@ -83,7 +67,7 @@ func invokeCreateTopic(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) 
 			Creator:  wallet,
 			Category: topicRequest.Category,
 			Tags:     topicRequest.Tags,
-			Images:   images,
+			Images:   topicRequest.Images,
 		}
 
 		b, _ := json.Marshal(&topicBlock)
@@ -128,8 +112,6 @@ func createTopicCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB
 		if err != nil {
 			return err
 		}
-
-		var _ = assets
 
 		return db.Transaction(func(tx *gorm.DB) error {
 
@@ -184,28 +166,11 @@ func invokeUpdateTopic(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) 
 			return c.JSON(err.Status(), err.Message())
 		}
 
-		images := make([]string, len(topicRequest.Images))
-
-		for i, imageb64 := range topicRequest.Images {
-
-			data, err := base64.StdEncoding.DecodeString(imageb64)
-
-			if err != nil {
-				return c.JSON(chaincodeBase64DecodeError.Status(), chaincodeBase64DecodeError.Message())
-			}
-
-			if cid, err := ipfs.Put(bytes.NewReader(data)); err != nil {
-				return c.JSON(err.Status(), err.Message())
-			} else {
-				images[i] = cid
-			}
-		}
-
 		topicBlock := TopicBlock{
 			Title:    topicRequest.Title,
 			Hash:     topicRequest.Hash,
 			CID:      CID,
-			Images:   images,
+			Images:   topicRequest.Images,
 			Category: topicRequest.Category,
 			Tags:     topicRequest.Tags,
 		}
@@ -234,18 +199,22 @@ func updateTopicCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB
 			return err
 		}
 
-		assets := utils.Map(topicChanged.Images, func(image string) *Asset {
+		tagsAssigned := utils.FilterMap(topicChanged.Tags, func(t string) *TagRelation {
+			return &TagRelation{
+				TagName: t,
+			}
+		}, func(t string) bool {
+			return t != NONE
+		})
+
+		assets := utils.FilterMap(topicChanged.Images, func(image string) *Asset {
 			return &Asset{
 				CreatorWallet: topicChanged.Creator,
 				CID:           image,
 				ContentType:   "image/jpeg",
 			}
-		})
-
-		tagsAssigned := utils.Map(topicChanged.Tags, func(t string) *TagRelation {
-			return &TagRelation{
-				TagName: t,
-			}
+		}, func(t string) bool {
+			return t != NONE
 		})
 
 		topic := Topic{}
@@ -268,13 +237,13 @@ func updateTopicCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB
 				}
 			}
 
-			if len(assets) != 0 {
+			if len(topicChanged.Images) != 0 {
 				if err := tx.Model(&topic).Association("Assets").Replace(&assets); err != nil {
 					return err
 				}
 			}
 
-			if len(tagsAssigned) != 0 {
+			if len(topicChanged.Tags) != 0 {
 				if err := tx.Model(&topic).Association("TagsAssigned").Replace(&tagsAssigned); err != nil {
 					return err
 				}

@@ -66,31 +66,13 @@ func invokeCreatePost(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) C
 			return c.JSON(err.Status(), err.Message())
 		}
 
-		images := make([]string, len(postRequest.Images))
-
-		for i, imageb64 := range postRequest.Images {
-
-			data, err := base64.StdEncoding.DecodeString(imageb64)
-
-			if err != nil {
-				return c.JSON(chaincodeBase64DecodeError.Status(), chaincodeBase64DecodeError.Message())
-			}
-
-			if cid, err := ipfs.Put(bytes.NewReader(data)); err != nil {
-				return c.JSON(err.Status(), err.Message())
-			} else {
-				images[i] = cid
-			}
-
-		}
-
 		postBlock := PostBlock{
 			Hash:     hash,
 			Creator:  wallet,
 			CID:      CID,
 			ReplyTo:  postRequest.ReplyTo,
 			BelongTo: postRequest.BelongTo,
-			Assets:   images,
+			Assets:   postRequest.Images,
 		}
 
 		b, _ := json.Marshal(&postBlock)
@@ -195,27 +177,10 @@ func invokeUpdatePost(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) C
 			return c.JSON(err.Status(), err.Message())
 		}
 
-		images := make([]string, len(postRequest.Images))
-
-		for i, imageb64 := range postRequest.Images {
-
-			data, err := base64.StdEncoding.DecodeString(imageb64)
-
-			if err != nil {
-				return c.JSON(chaincodeBase64DecodeError.Status(), chaincodeBase64DecodeError.Message())
-			}
-
-			if cid, err := ipfs.Put(bytes.NewReader(data)); err != nil {
-				return c.JSON(err.Status(), err.Message())
-			} else {
-				images[i] = cid
-			}
-		}
-
 		postBlock := PostBlock{
 			Hash:   postRequest.Hash,
 			CID:    CID,
-			Assets: images,
+			Assets: postRequest.Images,
 		}
 
 		b, _ := json.Marshal(&postBlock)
@@ -243,12 +208,14 @@ func updatePostCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB)
 			return err
 		}
 
-		assets := utils.Map(postChanged.Assets, func(image string) *Asset {
+		assets := utils.FilterMap(postChanged.Assets, func(image string) *Asset {
 			return &Asset{
 				CreatorWallet: postChanged.Creator,
 				CID:           image,
 				ContentType:   "image/jpeg",
 			}
+		}, func(image string) bool {
+			return image != NONE
 		})
 
 		post := Post{}
@@ -262,8 +229,14 @@ func updatePostCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB)
 				return err
 			}
 
+			if len(postChanged.Assets) != 0 {
+				if err := tx.Model(&post).Association("Assets").Replace(&assets); err != nil {
+					return err
+				}
+			}
+
 			return tx.Model(&post).
-				Updates(&Post{Content: string(data), Assets: assets}).Error
+				Updates(&Post{Content: string(data)}).Error
 
 		})
 	}
@@ -406,14 +379,14 @@ func downvotePostCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallbac
 				CreatorWallet: downvoteBlock.Creator,
 			}
 
-			for _, d := range post.Upvotes {
+			for _, d := range post.Downvotes {
 				if d.CreatorWallet == downvote.CreatorWallet {
 					tx.Model(&post).Association("Downvotes").Delete(d)
 					return nil
 				}
 			}
 
-			for _, u := range post.Downvotes {
+			for _, u := range post.Upvotes {
 				if u.CreatorWallet == downvote.CreatorWallet {
 					tx.Model(&post).Association("Upvotes").Delete(u)
 					break
