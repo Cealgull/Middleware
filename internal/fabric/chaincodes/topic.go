@@ -202,6 +202,7 @@ func invokeUpdateTopic(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) 
 		}
 
 		topicBlock := TopicBlock{
+			Title:    topicRequest.Title,
 			Hash:     topicRequest.Hash,
 			CID:      CID,
 			Images:   images,
@@ -256,12 +257,30 @@ func updateTopicCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB
 				return err
 			}
 
-			return tx.Model(&topic).
-				Updates(&Topic{Title: topicChanged.Title,
-					Content:          string(data),
-					TagsAssigned:     tagsAssigned,
-					CategoryAssigned: &CategoryRelation{CategoryName: topicChanged.Category},
-					Assets:           assets}).Error
+			topic.Title = topicChanged.Title
+			topic.Content = string(data)
+
+			if topicChanged.Category != "" {
+				if err := tx.Model(&topic).
+					Association("CategoryAssigned").
+					Replace(&CategoryRelation{TopicID: topic.ID, CategoryName: topicChanged.Category}); err != nil {
+					return err
+				}
+			}
+
+			if len(assets) != 0 {
+				if err := tx.Model(&topic).Association("Assets").Replace(&assets); err != nil {
+					return err
+				}
+			}
+
+			if len(tagsAssigned) != 0 {
+				if err := tx.Model(&topic).Association("TagsAssigned").Replace(&tagsAssigned); err != nil {
+					return err
+				}
+			}
+
+			return tx.Save(&topic).Error
 
 		})
 	}
@@ -316,7 +335,7 @@ func upvoteTopicCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallback
 
 		if err := db.Model(&Topic{}).
 			Preload("Upvotes").
-      Preload("Downvotes").
+			Preload("Downvotes").
 			Where("hash = ?", upvoteBlock.Hash).First(&topic).Error; err != nil {
 			return err
 		}
@@ -396,7 +415,7 @@ func downvoteTopicCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallba
 		topic := Topic{}
 
 		if err := db.Model(&Topic{}).
-      Preload("Upvotes").
+			Preload("Upvotes").
 			Preload("Downvotes").
 			Where("hash = ?", downvoteBlock.Hash).First(&topic).Error; err != nil {
 			return err
@@ -408,17 +427,17 @@ func downvoteTopicCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallba
 				CreatorWallet: downvoteBlock.Creator,
 			}
 
-			for _, d := range topic.Upvotes {
-				if d.CreatorWallet == downvote.CreatorWallet {
-					tx.Model(&topic).Association("Downvotes").Delete(d)
-					return nil
-				}
-			}
-
-			for _, u := range topic.Downvotes {
+			for _, u := range topic.Upvotes {
 				if u.CreatorWallet == downvote.CreatorWallet {
 					tx.Model(&topic).Association("Upvotes").Delete(u)
 					break
+				}
+			}
+
+			for _, d := range topic.Downvotes {
+				if d.CreatorWallet == downvote.CreatorWallet {
+					tx.Model(&topic).Association("Downvotes").Delete(d)
+					return nil
 				}
 			}
 
@@ -462,7 +481,9 @@ func queryTopicGet(logger *zap.Logger, db *gorm.DB) ChaincodeQuery {
 		err := db.Transaction(func(tx *gorm.DB) error {
 
 			tx = tx.Model(&Topic{}).
+				Preload("Creator").
 				Preload("CategoryAssigned").
+				Preload("CategoryAssigned.Category").
 				Preload("TagsAssigned").
 				Preload("Upvotes").
 				Preload("Downvotes").
@@ -525,11 +546,13 @@ func queryTopicsList(logger *zap.Logger, db *gorm.DB) ChaincodeQuery {
 				tx = tx.InnerJoins("inner join (?) as t2 on t2.owner_id = topics.id", subquery)
 			}
 
-			tx = tx.Preload("CategoryAssigned").
+			tx = tx.Preload("Creator").
+				Preload("CategoryAssigned").
+				Preload("CategoryAssigned.Category").
 				Preload("TagsAssigned").
 				Preload("Upvotes").
 				Preload("Downvotes").
-        Preload("Assets").
+				Preload("Assets").
 				Scopes(paginate(q.PageOrdinal, q.PageSize))
 
 			tx = tx.Where("deleted_at IS NULL")
