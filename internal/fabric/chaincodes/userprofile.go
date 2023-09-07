@@ -14,6 +14,8 @@ import (
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"time"
+	// "gorm.io/hints"
 )
 
 func invokeCreateUser(logger *zap.Logger, db *gorm.DB) ChaincodeInvoke {
@@ -22,12 +24,12 @@ func invokeCreateUser(logger *zap.Logger, db *gorm.DB) ChaincodeInvoke {
 		s, _ := session.Get("session", c)
 
 		wallet := s.Values["wallet"].(string)
-    
-    if err := db.Model(&User{}).Select("Wallet").Where("wallet = ?").First(&User{}).Error; err == nil {
-      chaincodeDuplicateError := ChaincodeDuplicatedError{"User"}
-      return c.JSON(chaincodeDuplicateError.Status(), chaincodeDuplicateError.Message())
-    }
-    
+
+		if err := db.Model(&User{}).Where(&User{Wallet: wallet}).First(&User{}).Error; err == nil {
+			chaincodeDuplicateError := ChaincodeDuplicatedError{"User"}
+			return c.JSON(chaincodeDuplicateError.Status(), chaincodeDuplicateError.Message())
+		}
+
 		block := ProfileBlock{
 			Username:  "Alice",
 			Wallet:    wallet,
@@ -49,20 +51,20 @@ func invokeCreateUser(logger *zap.Logger, db *gorm.DB) ChaincodeInvoke {
 		}
 
 		user := User{
-				Username:            block.Username,
-				Wallet:              block.Wallet,
-				Avatar:              block.Avatar,
-				Muted:               block.Muted,
-				Banned:              block.Banned,
-				ActiveRoleRelation:  nil,
-				ActiveBadgeRelation: nil,
+			Username:            block.Username,
+			Wallet:              block.Wallet,
+			Avatar:              block.Avatar,
+			Muted:               block.Muted,
+			Banned:              block.Banned,
+			ActiveRoleRelation:  nil,
+			ActiveBadgeRelation: nil,
 		}
 
 		profile := Profile{
-				Signature:   block.Signature,
-				Balance:     block.Balance,
-				Credibility: block.Credibility,
-				User:        &user,
+			Signature:   block.Signature,
+			Balance:     block.Balance,
+			Credibility: block.Credibility,
+			User:        &user,
 		}
 
 		return c.JSON(success.Status(), &profile)
@@ -80,7 +82,7 @@ func invokeUpdateUser(logger *zap.Logger, db *gorm.DB) ChaincodeInvoke {
 			Avatar    string `json:"avatar"`
 			Signature string `json:"signature"`
 
-			ActiveRole string `json:"activeRole"`
+			ActiveRole  string `json:"activeRole"`
 			ActiveBadge string `json:"activeBadge"`
 		}
 
@@ -212,17 +214,17 @@ func updateUserCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallback 
 			var _ = tx.Updates(&user).Error
 
 			if len(profileChanged.ActiveBadge) != 0 {
-        if err := tx.Model(prevProfile.User).Association("ActiveBadgeRelation").
-          Append(&BadgeRelation{BadgeName: profileChanged.ActiveBadge}); err != nil{
-          return err
-        }
+				if err := tx.Model(prevProfile.User).Association("ActiveBadgeRelation").
+					Append(&BadgeRelation{BadgeName: profileChanged.ActiveBadge}); err != nil {
+					return err
+				}
 			}
 
 			if len(profileChanged.ActiveRole) != 0 {
-        if err := tx.Model(prevProfile.User).Association("ActiveRoleRelation").
-          Append(&RoleRelation{RoleName: profileChanged.ActiveRole}); err != nil {
-          return err
-        }
+				if err := tx.Model(prevProfile.User).Association("ActiveRoleRelation").
+					Append(&RoleRelation{RoleName: profileChanged.ActiveRole}); err != nil {
+					return err
+				}
 			}
 
 			return nil
@@ -243,7 +245,7 @@ func authLogin(logger *zap.Logger, db *gorm.DB) ChaincodeCustom {
 			Preload("User.ActiveRoleRelation").
 			Where("user_wallet = ?", wallet).
 			First(&profile).Error; err != nil {
-      return invokeCreateUser(logger, db)(contract, c)
+			return invokeCreateUser(logger, db)(contract, c)
 		}
 
 		return c.JSON(http.StatusOK, &profile)
@@ -319,14 +321,91 @@ func queryUser(logger *zap.Logger, db *gorm.DB) ChaincodeQuery {
 	}
 }
 
+func queryStatistics(logger *zap.Logger, db *gorm.DB) ChaincodeQuery {
+	return func(c echo.Context) error {
+
+		type StatQuery struct {
+			Wallet string `json:"wallet"`
+		}
+
+		q := StatQuery{}
+
+		if c.Bind(&q) != nil {
+			chaincodeDeserializationError := ChaincodeDeserializationError{}
+			return c.JSON(chaincodeDeserializationError.Status(), chaincodeDeserializationError.Message())
+		}
+
+		type StatResponse struct {
+			UpvotesGranted  int       `json:"upvotesGranted"`
+			UpvotesReceived int       `json:"upvotesRecieved"`
+			TopicsCreated   int       `json:"topicsCreated"`
+			PostsCreated    int       `json:"postsCreated"`
+			RegisterDate    time.Time `json:"registerDate"`
+		}
+
+		if db.Model(&User{}).Where("wallet = ?", q.Wallet).First(&User{}).Error != nil {
+			chaincodeNotFoundError := ChaincodeNotFoundError{}
+			return c.JSON(chaincodeNotFoundError.Status(), chaincodeNotFoundError.Message())
+		}
+
+		r := &StatResponse{}
+
+		err := db.Transaction(func(tx *gorm.DB) error {
+
+			upvotesGrantedQuery := tx.Table("upvotes").Select("COUNT(*) as upvotes_granted").Where("creator_wallet = (?)", q.Wallet)
+			postsCreatedQuery := tx.Table("posts").Select("COUNT(*) as posts_created").Where("creator_wallet = (?)", q.Wallet)
+			topicsCreatedQuery := tx.Table("topics").Select("COUNT(*) as topics_created").Where("creator_wallet = (?)", q.Wallet)
+			registerDateQuery := tx.Table("users").Select("created_at as register_date").Where("wallet = (?)", q.Wallet)
+
+      upvotesPostsReceivedQuery := tx.Table("upvotes").
+        Select("COUNT (*) as u1").
+        Where("owner_type = ?", "posts").
+        Joins("inner join (?) as p on p.id = upvotes.id",
+        db.Model(&Post{}).Where("creator_wallet = ?", q.Wallet))
+      
+      upvotesTopicReceivedQuery := tx.Table("upvotes").
+      Select("COUNT (*) as u2").
+      Where("owner_type = ?", "topics").
+      Joins("inner join (?) as t on t.id = upvotes.id",
+        db.Model(&Topic{}).Where("creator_wallet = ?", q.Wallet))
+
+      upvotesReceivedQuery := tx.Table("(?) as u1, (?) as u2", upvotesPostsReceivedQuery, upvotesTopicReceivedQuery).Select("(u1 + u2) as upvotes_received")
+
+			if err := tx.Table("(?) as upvoted_granted, (?) as upvotes_received, (?) as posts_created, (?) as topics_created, (?) as register_date",
+				upvotesGrantedQuery,
+        upvotesReceivedQuery,
+				postsCreatedQuery,
+				topicsCreatedQuery,
+				registerDateQuery).Scan(r).Error; err != nil {
+				return err
+			}
+
+
+
+
+			return nil
+
+		})
+
+		if err != nil {
+			return c.JSON(chaincodeInternalError.Status(), chaincodeInternalError.Message())
+		}
+
+		return c.JSON(success.Status(), r)
+	}
+
+}
+
 func NewUserProfileMiddleware(logger *zap.Logger, net common.Network, db *gorm.DB) *ChaincodeMiddleware {
 
 	return NewChaincodeMiddleware(logger, net, net.GetContract("userprofile"),
 
+		WithChaincodeHandler("create", "CreateUser", invokeCreateUser(logger, db), createUserCallback(logger, db)),
 		WithChaincodeHandler("update", "UpdateUser", invokeUpdateUser(logger, db), updateUserCallback(logger, db)),
 
 		WithChaincodeQuery("profile", queryProfile(logger, db)),
 		WithChaincodeQuery("view", queryUser(logger, db)),
+		WithChaincodeQuery("statistics", queryStatistics(logger, db)),
 
 		WithChaincodeCustom("/auth/login", authLogin(logger, db)),
 		WithChaincodeCustom("/auth/logout", authLogin(logger, db)),
