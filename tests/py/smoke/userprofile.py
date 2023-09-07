@@ -11,6 +11,8 @@ class UserProfileSmokeTest(unittest.TestCase):
         self.request = get_request_handler(self.credential)
 
     def test_0001_update_user(self):
+        time.sleep(0.5)
+
         res = self.request(
             "/api/user/invoke/update",
             {
@@ -32,6 +34,13 @@ class UserProfileSmokeTest(unittest.TestCase):
         self.assertEqual(res["wallet"], self.credential.wallet)
         self.assertEqual(res["avatar"], "0xsaadfwadf")
         self.assertEqual(res["signature"], "Genshin Impact is a good game")
+
+    def test_0002_query_statitics(self):
+        res = self.request(
+            "/api/user/query/statistics", {"wallet": self.credential.wallet}
+        )
+
+        print(res)
 
 
 if __name__ == "__main__":
