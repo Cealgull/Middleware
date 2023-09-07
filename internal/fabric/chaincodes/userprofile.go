@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/Cealgull/Middleware/internal/fabric/common"
 	. "github.com/Cealgull/Middleware/internal/models"
@@ -14,7 +15,6 @@ import (
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-	"time"
 	// "gorm.io/hints"
 )
 
@@ -161,9 +161,7 @@ func createUserCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallback 
 				User:        &user,
 			}
 
-			var _ = tx.Create(&profile).Error
-
-			return nil
+			return tx.Create(&profile).Error
 		})
 	}
 }
@@ -352,30 +350,30 @@ func queryStatistics(logger *zap.Logger, db *gorm.DB) ChaincodeQuery {
 
 		err := db.Transaction(func(tx *gorm.DB) error {
 
-			upvotesGrantedQuery := tx.Table("upvotes").Select("COUNT(*) as upvotes_granted").Where("creator_wallet = ?", q.Wallet)
-			postsCreatedQuery := tx.Table("posts").Select("COUNT(*) as posts_created").Where("creator_wallet = ?", q.Wallet)
-			topicsCreatedQuery := tx.Table("topics").Select("COUNT(*) as topics_created").Where("creator_wallet = ?", q.Wallet)
-			registerDateQuery := tx.Table("users").Select("created_at as register_date").Where("wallet = ?", q.Wallet)
+			upvotesGrantedQuery := tx.Table("upvotes").Select("COUNT(*) as upvotes_granted").Where("creator_wallet = (?)", q.Wallet)
+			postsCreatedQuery := tx.Table("posts").Select("COUNT(*) as posts_created").Where("creator_wallet = (?)", q.Wallet)
+			topicsCreatedQuery := tx.Table("topics").Select("COUNT(*) as topics_created").Where("creator_wallet = (?)", q.Wallet)
+			registerDateQuery := tx.Table("users").Select("created_at as register_date").Where("wallet = (?)", q.Wallet)
 
 			upvotesPostsReceivedQuery := tx.Table("upvotes").
 				Select("COUNT (*) as u1").
 				Where("owner_type = ?", "posts").
-				Joins("inner join (?) as p on p.id = upvotes.owner_id",
+				Joins("inner join (?) as p on p.id = upvotes.id",
 					db.Model(&Post{}).Where("creator_wallet = ?", q.Wallet))
 
 			upvotesTopicReceivedQuery := tx.Table("upvotes").
 				Select("COUNT (*) as u2").
 				Where("owner_type = ?", "topics").
-				Joins("inner join (?) as t on t.id = upvotes.owner_id",
+				Joins("inner join (?) as t on t.id = upvotes.id",
 					db.Model(&Topic{}).Where("creator_wallet = ?", q.Wallet))
 
 			upvotesReceivedQuery := tx.Table("(?) as u1, (?) as u2", upvotesPostsReceivedQuery, upvotesTopicReceivedQuery).Select("(u1 + u2) as upvotes_received")
 
-			if err := tx.Table("(?) as upvoted_granted, (?) as upvotes_received, (?) as topics_created, (?) as posts_created, (?) as register_date",
+			if err := tx.Table("(?) as upvoted_granted, (?) as upvotes_received, (?) as posts_created, (?) as topics_created, (?) as register_date",
 				upvotesGrantedQuery,
 				upvotesReceivedQuery,
-				topicsCreatedQuery,
 				postsCreatedQuery,
+				topicsCreatedQuery,
 				registerDateQuery).Scan(r).Error; err != nil {
 				return err
 			}
@@ -397,7 +395,6 @@ func NewUserProfileMiddleware(logger *zap.Logger, net common.Network, db *gorm.D
 
 	return NewChaincodeMiddleware(logger, net, net.GetContract("userprofile"),
 
-		WithChaincodeHandler("create", "CreateUser", invokeCreateUser(logger, db), createUserCallback(logger, db)),
 		WithChaincodeHandler("update", "UpdateUser", invokeUpdateUser(logger, db), updateUserCallback(logger, db)),
 
 		WithChaincodeQuery("profile", queryProfile(logger, db)),
