@@ -117,11 +117,6 @@ type Emoji struct {
 	Code string `gorm:"not null"`
 }
 
-type DeleteBlock struct {
-  Hash    string `json:"hash"`
-  Creator string `json:"creator"`
-}
-
 func (u *Upvote) MarshalJSON() ([]byte, error) {
 
 	return json.Marshal(&struct {
