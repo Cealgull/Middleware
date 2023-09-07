@@ -8,6 +8,11 @@ import (
 	"gorm.io/gorm"
 )
 
+type DeleteBlock struct {
+	Hash    string `json:"hash"`
+	Creator string `json:"creator"`
+}
+
 type TopicBlock struct {
 	Hash     string   `json:"hash"`
 	Title    string   `json:"title"`
