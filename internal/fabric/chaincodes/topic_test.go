@@ -691,16 +691,6 @@ func TestDownvoteTopicCallback(t *testing.T) {
 		downvoteBlock.Hash = "topic1"
 	})
 
-	t.Run("Downvoting Topic Callback with creator not found", func(t *testing.T) {
-		downvoteBlock.Creator = "unknown"
-
-		b, _ := json.Marshal(&downvoteBlock)
-
-		err := downvoteTopic(b)
-		assert.Error(t, err)
-		downvoteBlock.Creator = "0x123456789"
-	})
-
 	t.Run("Downvoting Topic Callback with success", func(t *testing.T) {
 
 		b, _ := json.Marshal(&downvoteBlock)

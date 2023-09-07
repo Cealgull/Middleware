@@ -307,21 +307,30 @@ func TestCreatePostCallback(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
+	t.Run("Creating Post Callback with no replyTo", func(t *testing.T) {
+
+		postBlock.ReplyTo = ""
+		storage.EXPECT().Cat(postBlock.CID).Return(reader, nil)
+		b, _ := json.Marshal(&postBlock)
+
+		err := createPost(b)
+		assert.NoError(t, err)
+		postBlock.ReplyTo = "post2"
+	})
+
 }
 
 func TestInvokeUpdatePost(t *testing.T) {
 	type UpdatePostRequest struct {
 		Hash    string   `json:"hash"`
 		Content string   `json:"content"`
-		Images  []string `json:"assets"`
-		Type    string   `json:"type"`
+		Images  []string `json:"images"`
 	}
 
 	payload := UpdatePostRequest{
 		Hash:    "post1",
 		Content: "Hello world",
 		Images:  []string{},
-		Type:    "post",
 	}
 
 	storage := ipfsmock.NewMockIPFSStorage(t)
