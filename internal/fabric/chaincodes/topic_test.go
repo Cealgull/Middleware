@@ -749,6 +749,40 @@ func TestQueryTags(t *testing.T) {
 	})
 }
 
+func TestQueryTopicGet(t *testing.T) {
+
+	db := prepareTopicData(t)
+	query := queryTopicGet(logger, db)
+	t.Run("Downvoting Topic With Unmarshal Error", func(t *testing.T) {
+
+		req := httptest.NewRequest(http.MethodPost, "/api/topic/query/get", bytes.NewReader([]byte{1, 2, 3}))
+		rec := httptest.NewRecorder()
+		c := server.NewContext(req, rec)
+
+		var _ = query(c)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+
+	t.Run("Querying Topic With Success", func(t *testing.T) {
+
+		type TopicGetRequest struct {
+			Hash string `json:"hash"`
+		}
+
+		payload := TopicGetRequest{
+			Hash: "topic1",
+		}
+		req := httptest.NewRequest(http.MethodPost, "/api/topic/query/get", newJsonRequest(&payload))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+
+		rec := httptest.NewRecorder()
+		c := server.NewContext(req, rec)
+
+		var _ = query(c)
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+}
+
 func TestNewTopicChaincodeMiddleware(t *testing.T) {
 
 	network := mocks.NewMockNetwork(t)
