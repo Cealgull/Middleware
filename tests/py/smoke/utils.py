@@ -29,14 +29,6 @@ def test_auth_login() -> Credential:
     sig = base64.b64encode(priv.sign(cert.encode())).decode()
 
     res = requests.post(
-        CEALGULL_MIDDLEWARE_HOST + "/api/user/invoke/create",
-        headers={"signature": sig},
-        json={"cert": cert},
-    )
-
-    time.sleep(0.5)
-
-    res = requests.post(
         CEALGULL_MIDDLEWARE_HOST + "/auth/login",
         headers={"signature": sig},
         json={"cert": cert},
