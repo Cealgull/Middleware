@@ -22,6 +22,12 @@ type PostBlock struct {
 	ReplyTo  string   `json:"replyTo"`
 	BelongTo string   `json:"belongTo"`
 	Assets   []string `json:"assets,omitempty"`
+
+	Deleted bool `json:"deleted"`
+
+	Upvotes   []string            `json:"upvotes,omitempty"`
+	Downvotes []string            `json:"downvotes,omitempty"`
+	Emojis    map[string][]string `json:"emojis,omitempty"`
 }
 
 type Post struct {
@@ -30,8 +36,8 @@ type Post struct {
 	CreatorWallet string    `gorm:"index;not null"`
 	Creator       *User     `gorm:"references:Wallet"`
 	Content       string    `gorm:"not null"`
-	CreatedAt      time.Time `gorm:"autoCreateTime;not null"`
-	UpdatedAt      time.Time `gorm:"autoUpdateTime;not null"`
+	CreatedAt     time.Time `gorm:"autoCreateTime;not null"`
+	UpdatedAt     time.Time `gorm:"autoUpdateTime;not null"`
 	DeletedAt     gorm.DeletedAt
 	ReplyToID     *uint
 	ReplyTo       *Post
@@ -50,7 +56,7 @@ func (p *Post) MarshalJSON() ([]byte, error) {
 		Creator  *User     `json:"creator"`
 		Hash     string    `json:"hash"`
 		Content  string    `json:"content"`
-    CreateAt time.Time `json:"createAt"`
+		CreateAt time.Time `json:"createAt"`
 		UpdateAt time.Time `json:"updateAt"`
 		Assets   []*Asset  `json:"assets,omitempty"`
 	}
@@ -78,7 +84,7 @@ func (p *Post) MarshalJSON() ([]byte, error) {
 					Hash:     p.ReplyTo.Hash,
 					Creator:  p.ReplyTo.Creator,
 					Content:  p.Content,
-          CreateAt: p.ReplyTo.CreatedAt,
+					CreateAt: p.ReplyTo.CreatedAt,
 					UpdateAt: p.ReplyTo.UpdatedAt,
 					Assets:   p.ReplyTo.Assets,
 				}

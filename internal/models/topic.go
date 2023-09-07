@@ -9,15 +9,19 @@ import (
 )
 
 type TopicBlock struct {
-	Hash      string   `json:"hash"`
-	Title     string   `json:"title"`
-	Creator   string   `json:"creator"`
-	CID       string   `json:"cid"`
-	Category  string   `json:"category"`
-	Tags      []string `json:"tags"`
-	Images    []string `json:"images"`
-	Upvotes   []string `json:"upvotes"`
-	Downvotes []string `json:"downvotes"`
+	Hash     string   `json:"hash"`
+	Title    string   `json:"title"`
+	Creator  string   `json:"creator"`
+	CID      string   `json:"cid"`
+	Category string   `json:"category"`
+	Tags     []string `json:"tags"`
+	Images   []string `json:"images"`
+
+	Deleted bool `json:"deleted"`
+
+	Upvotes   []string            `json:"upvotes"`
+	Downvotes []string            `json:"downvotes"`
+	Emojis    map[string][]string `json:"emojis"`
 }
 
 type Topic struct {
