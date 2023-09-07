@@ -91,13 +91,7 @@ func (p *Post) MarshalJSON() ([]byte, error) {
 			}
 			return nil
 		}(),
-		BelongTo: func() string {
-			if p.BelongTo != nil {
-				return p.BelongTo.Title
-			}
-			return ""
-
-		}(),
+		BelongTo: p.BelongToHash,
 		Assets: p.Assets,
 		Upvotes: utils.Map(p.Upvotes, func(upvote *Upvote) string {
 			return upvote.CreatorWallet
