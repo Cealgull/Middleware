@@ -133,6 +133,24 @@ func (f *ChaincodeDuplicatedError) Message() *proto.ResponseMessage {
   }
 }
 
+type ChaincodeNotFoundError struct {
+  field string
+}
+
+func (f *ChaincodeNotFoundError) Error() string {
+  return "Chaincode: Not Found " + f.field
+}
+
+func (f *ChaincodeNotFoundError) Status() int {
+  return http.StatusBadRequest
+}
+
+func (f *ChaincodeNotFoundError) Message() *proto.ResponseMessage {
+  return &proto.ResponseMessage{
+    Code:    "C1008",
+    Message: f.Error(),
+  }
+}
 
 var success *proto.Success = &proto.Success{}
 var chaincodeInternalError *ChaincodeInternalError = &ChaincodeInternalError{}
