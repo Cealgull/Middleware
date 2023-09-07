@@ -218,6 +218,10 @@ func invokeUpdateTopic(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) 
 			return c.JSON(err.Status(), err.Message())
 		}
 
+		if err := validate(db, []Tag{}, topicRequest.Tags); err != nil {
+			return c.JSON(err.Status(), err.Message())
+		}
+
 		topic := Topic{}
 		if err := db.Model(&Topic{}).
 			Where("hash = ?", topicRequest.Hash).First(&topic).Error; err != nil {
@@ -285,7 +289,7 @@ func updateTopicCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB
 
 		return db.Transaction(func(tx *gorm.DB) error {
 
-			if err := db.Model(&Topic{}).
+			if err := tx.Model(&Topic{}).
 				Where("hash = ?", topicChanged.Hash).First(&topic).Error; err != nil {
 				return err
 			}
