@@ -521,6 +521,224 @@ func TestUpdatePostCallback(t *testing.T) {
 
 }
 
+func TestInvokeUpvotePost(t *testing.T) {
+	type UpvoteRequest struct {
+		Hash string `json:"hash"`
+		Type string `json:"type"`
+	}
+
+	payload := UpvoteRequest{
+		Hash: "post1",
+		Type: "Post",
+	}
+
+	contract := fabricmock.NewMockContract()
+
+	db := preparePostData(t)
+
+	upvotePost := invokeUpvotePost(logger, db)
+
+	t.Run("Upvoting Post With Unmarshal Error", func(t *testing.T) {
+
+		req := httptest.NewRequest(http.MethodPost, "/api/post/invoke/upvote", bytes.NewReader([]byte{1, 2, 3}))
+		rec := httptest.NewRecorder()
+
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		err := upvotePost(contract, c)
+
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+
+	t.Run("Upvoting Post With Hash Error", func(t *testing.T) {
+		payload.Hash = "a111"
+		req := httptest.NewRequest(http.MethodPost, "/api/post/invoke/upvote", newJsonRequest(&payload))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		err := upvotePost(contract, c)
+
+		assert.Error(t, err)
+		payload.Hash = "post1"
+	})
+
+	t.Run("Upvoting Post With Chaincode Network Failure", func(t *testing.T) {
+
+		req := httptest.NewRequest(http.MethodPost, "/api/post/invoke/upvote", newJsonRequest(&payload))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		contract.On("Submit", "UpvotePost", mock.Anything).Return([]byte(nil), errors.New("Hello world")).Once()
+		err := upvotePost(contract, c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+
+	})
+
+	t.Run("Upvoting Post With Success", func(t *testing.T) {
+
+		req := httptest.NewRequest(http.MethodPost, "/api/post/invoke/upvote", newJsonRequest(&payload))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		contract.On("Submit", "UpvotePost", mock.Anything).Return([]byte(nil), nil).Once()
+		err := upvotePost(contract, c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+}
+
+func TestUpvotePostCallback(t *testing.T) {
+
+	upvoteBlock := UpvoteBlock{
+		Hash:    "post1",
+		Creator: "0x123456789",
+	}
+
+	db := preparePostData(t)
+
+	upvotePost := upvotePostCallback(logger, db)
+
+	t.Run("Upvoting Post Callback with hash not found", func(t *testing.T) {
+		upvoteBlock.Hash = "unknown"
+
+		b, _ := json.Marshal(&upvoteBlock)
+
+		err := upvotePost(b)
+		assert.Error(t, err)
+		upvoteBlock.Hash = "post1"
+	})
+
+	t.Run("Upvoting Post Callback with success", func(t *testing.T) {
+
+		b, _ := json.Marshal(&upvoteBlock)
+
+		err := upvotePost(b)
+		assert.NoError(t, err)
+	})
+
+}
+
+func TestInvokeDownvotePost(t *testing.T) {
+	type DownvoteRequest struct {
+		Hash string `json:"hash"`
+		Type string `json:"type"`
+	}
+
+	payload := DownvoteRequest{
+		Hash: "post1",
+		Type: "Post",
+	}
+
+	contract := fabricmock.NewMockContract()
+
+	db := preparePostData(t)
+
+	downvotePost := invokeDownvotePost(logger, db)
+
+	t.Run("Downvoting Post With Unmarshal Error", func(t *testing.T) {
+
+		req := httptest.NewRequest(http.MethodPost, "/api/post/invoke/downvote", bytes.NewReader([]byte{1, 2, 3}))
+		rec := httptest.NewRecorder()
+
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		err := downvotePost(contract, c)
+
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+
+	t.Run("Downvoting Post With Hash Error", func(t *testing.T) {
+		payload.Hash = "a111"
+		req := httptest.NewRequest(http.MethodPost, "/api/post/invoke/downvote", newJsonRequest(&payload))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		err := downvotePost(contract, c)
+
+		assert.Error(t, err)
+		payload.Hash = "post1"
+	})
+
+	t.Run("Downvoting Post With Chaincode Network Failure", func(t *testing.T) {
+
+		req := httptest.NewRequest(http.MethodPost, "/api/post/invoke/downvote", newJsonRequest(&payload))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		contract.On("Submit", "DownvotePost", mock.Anything).Return([]byte(nil), errors.New("Hello world")).Once()
+		err := downvotePost(contract, c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+
+	})
+
+	t.Run("Downvoting Post With Success", func(t *testing.T) {
+
+		req := httptest.NewRequest(http.MethodPost, "/api/post/invoke/downvote", newJsonRequest(&payload))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		contract.On("Submit", "DownvotePost", mock.Anything).Return([]byte(nil), nil).Once()
+		err := downvotePost(contract, c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+}
+
+func TestDownvotePostCallback(t *testing.T) {
+
+	downvoteBlock := DownvoteBlock{
+		Hash:    "post1",
+		Creator: "0x123456789",
+	}
+
+	db := preparePostData(t)
+
+	downvotePost := downvotePostCallback(logger, db)
+
+	t.Run("Downvoting Post Callback with hash not found", func(t *testing.T) {
+		downvoteBlock.Hash = "unknown"
+
+		b, _ := json.Marshal(&downvoteBlock)
+
+		err := downvotePost(b)
+		assert.Error(t, err)
+		downvoteBlock.Hash = "post1"
+	})
+
+	t.Run("Downvoting Post Callback with success", func(t *testing.T) {
+
+		b, _ := json.Marshal(&downvoteBlock)
+
+		err := downvotePost(b)
+		assert.NoError(t, err)
+	})
+
+}
+
 func TestQueryPostsList(t *testing.T) {
 	type QueryRequest struct {
 		PageOrdinal int    `json:"pageOrdinal"`
