@@ -28,9 +28,9 @@ user@localhost:~ $ go test ./...
 first set the constant in `tests/py/smoke/config.py` for two servers. Then run the following command,
 
 ```console
-user@localhost:/path/to/middleware/tests/py/ pipx install cryptography
+user@localhost:/path/to/middleware/tests/py/ $ pipx install cryptography
 
-user@localhost:/path/to/middleware/tests/py/ python -m smoke
+user@localhost:/path/to/middleware/tests/py/ $ python -m smoke
 ```
 
 ### Load Test
@@ -38,8 +38,8 @@ user@localhost:/path/to/middleware/tests/py/ python -m smoke
 'tests/py/locust' this is the load tests based on the famous [locust](https://locust.io/) framework. To Install and run,
 
 ``` console
-user@localhost:/path/to/middleware/tests/py/ pipx install locust
+user@localhost:/path/to/middleware/tests/py/ $ pipx install locust
 
-user@localhost:/path/to/middleware/tests/py/locust locust --users 25 --host http://localhost:8089 -f locustfile.py
+user@localhost:/path/to/middleware/tests/py/locust $ locust --users 25 --host http://localhost:8089 -f locustfile.py
 ```
 
