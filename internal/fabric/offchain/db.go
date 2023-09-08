@@ -8,6 +8,7 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+	"gorm.io/plugin/prometheus"
 )
 
 type PostgresOption func(config *postgres.Config) error
@@ -34,11 +35,11 @@ func NewPostgresDialector(options ...PostgresOption) gorm.Dialector {
 	return postgres.New(dialector)
 }
 
-func NewOffchainStore(dialector gorm.Dialector) (*gorm.DB, error) {
+func NewOffchainStore(dialector gorm.Dialector, promethusConfig *config.PrometheusConfig) (*gorm.DB, error) {
 
 	db, err := gorm.Open(dialector, &gorm.Config{
 		FullSaveAssociations: true,
-		Logger:               logger.Default.LogMode(logger.Info),
+		Logger:               logger.Default.LogMode(logger.Warn),
 	})
 
 	if err != nil {
@@ -69,6 +70,16 @@ func NewOffchainStore(dialector gorm.Dialector) (*gorm.DB, error) {
 		BadgeRelation{},
 	); err != nil {
 		return nil, err
+	}
+
+	if promethusConfig.Enabled {
+		var _ = db.Use(prometheus.New(
+			prometheus.Config{
+				DBName:         "cealgull",
+				StartServer:    true,
+				HTTPServerPort: uint32(promethusConfig.Port),
+			},
+		))
 	}
 
 	return db, err

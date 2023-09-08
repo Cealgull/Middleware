@@ -130,7 +130,7 @@ func NewGatewayMiddleware(logger *zap.Logger, ipfs *ipfs.IPFSManager, config *co
 
 	dialector := offchain.NewPostgresDialector(offchain.WithPostgresDSNConfig(&config.Postgres))
 
-	db, err := offchain.NewOffchainStore(dialector)
+	db, err := offchain.NewOffchainStore(dialector, &config.Postgres.Prometheus)
 
 	if err != nil {
 		return nil, err
