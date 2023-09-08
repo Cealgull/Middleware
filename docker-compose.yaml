@@ -45,6 +45,7 @@ services:
         condition: service_healthy
       ipfs:
         condition: service_healthy
+    hostname: "gateway.cealgull.middleware"
     networks:
       - cealgull_middleware
       - fabric_test
