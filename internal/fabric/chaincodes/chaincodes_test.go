@@ -3,6 +3,7 @@ package chaincodes
 import (
 	"testing"
 
+	"github.com/Cealgull/Middleware/internal/config"
 	"github.com/Cealgull/Middleware/internal/fabric/offchain"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/gorilla/sessions"
@@ -31,7 +32,7 @@ func newSqliteDB() *gorm.DB {
 
 	dialector := sqlite.Open("file::memory:")
 
-	db, _ := offchain.NewOffchainStore(dialector)
+	db, _ := offchain.NewOffchainStore(dialector, &config.PrometheusConfig{Enabled: false})
 
 	if err := db.Exec("PRAGMA foreign_keys = ON", nil).Error; err != nil {
 		panic(err)
