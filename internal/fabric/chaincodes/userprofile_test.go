@@ -17,6 +17,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"gorm.io/gorm"
 )
 
 func newJsonRequest(payload interface{}) io.Reader {
@@ -102,7 +103,7 @@ func TestInvokeUpdateUser(t *testing.T) {
 		Description: "Boring",
 	}
 	badgeRelation := &BadgeRelation{
-		Badge: badge,
+		BadgeName: badge.Name,
 	}
 
 	role := &Role{
@@ -111,7 +112,7 @@ func TestInvokeUpdateUser(t *testing.T) {
 		Privilege:   0,
 	}
 	roleRelation := &RoleRelation{
-		Role: role,
+		RoleName: role.Name,
 	}
 
 	db := newSqliteDB()
@@ -122,7 +123,7 @@ func TestInvokeUpdateUser(t *testing.T) {
 		ActiveRoleRelation:  roleRelation,
 	}
 	profile := &Profile{
-		User:                   user,
+		UserWallet:             &user.Wallet,
 		RoleRelationsAssigned:  []*RoleRelation{roleRelation},
 		BadgeRelationsReceived: []*BadgeRelation{badgeRelation},
 	}
@@ -131,7 +132,7 @@ func TestInvokeUpdateUser(t *testing.T) {
 	assert.NoError(t, db.Create(&role).Error)
 	assert.NoError(t, db.Create(&roleRelation).Error)
 	assert.NoError(t, db.Create(&user).Error)
-	assert.NoError(t, db.Create(&profile).Error)
+	assert.NoError(t, db.Session(&gorm.Session{FullSaveAssociations: true}).Create(&profile).Error)
 
 	u := invokeUpdateUser(logger, db)
 
@@ -206,48 +207,67 @@ func TestInvokeUpdateUser(t *testing.T) {
 	})
 }
 
-// func TestAuthLogin(t *testing.T) {
+func TestAuthLogin(t *testing.T) {
 
-// 	contract := mocks.NewMockContract()
+	contract := mocks.NewMockContract()
 
-// 	t.Run("Login with DB Failure", func(t *testing.T) {
+	t.Run("Login with DB Failure", func(t *testing.T) {
 
-// 		db, _ := newSqlMockDB()
+		db, _ := newSqlMockDB()
 
-// 		login := authLogin(logger, db)
+		login := authLogin(logger, db)
 
-// 		req := httptest.NewRequest(http.MethodPost, "/auth/login", nil)
-// 		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		req := httptest.NewRequest(http.MethodPost, "/auth/login", nil)
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
 
-// 		rec := httptest.NewRecorder()
+		rec := httptest.NewRecorder()
 
-// 		c := server.NewContext(req, rec)
-// 		c = newMockSignedContext(c)
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
 
-// 		err := login(contract, c)
-// 		assert.NoError(t, err)
-// 		assert.Equal(t, http.StatusInternalServerError, rec.Code)
-// 	})
+		err := login(contract, c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	})
 
-// 	t.Run("Login with DB Success", func(t *testing.T) {
+	t.Run("Login with DB Success", func(t *testing.T) {
 
-// 		db := newSqliteDB()
+		db := newSqliteDB()
 
-// 		assert.NoError(t, db.Create(&Profile{User: &User{Wallet: "0x123456789"}}).Error)
+		assert.NoError(t, db.Create(&Profile{User: &User{Wallet: "0x123456789"}}).Error)
 
-// 		login := authLogin(logger, db)
+		login := authLogin(logger, db)
 
-// 		req := httptest.NewRequest(http.MethodPost, "/auth/login", nil)
-// 		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		req := httptest.NewRequest(http.MethodPost, "/auth/login", nil)
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
 
-// 		rec := httptest.NewRecorder()
-// 		c := server.NewContext(req, rec)
-// 		c = newMockSignedContext(c)
+		rec := httptest.NewRecorder()
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
 
-// 		err := login(contract, c)
-// 		assert.NoError(t, err)
-// 	})
-// }
+		err := login(contract, c)
+		assert.NoError(t, err)
+	})
+
+	t.Run("Login with user missing", func(t *testing.T) {
+		db := newSqliteDB()
+
+		login := authLogin(logger, db)
+
+		req := httptest.NewRequest(http.MethodPost, "/auth/login", nil)
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+
+		rec := httptest.NewRecorder()
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		var _ = contract.On("Submit", "CreateUser", mock.Anything).Return(mockInvokeResult, nil).Once()
+
+		err := login(contract, c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+}
 
 func TestAuthLogout(t *testing.T) {
 
@@ -342,8 +362,6 @@ func TestUpdateUserCallback(t *testing.T) {
 		Signature:   "signature",
 		Credibility: 0,
 		Balance:     0,
-		ActiveRole:  "A",
-		ActiveBadge: "A",
 	}
 
 	t.Run("Updating user with success", func(t *testing.T) {
@@ -402,6 +420,8 @@ func TestUpdateUserCallback(t *testing.T) {
 		updateUser := updateUserCallback(logger, db)
 
 		b, _ := json.Marshal(&profileChanged)
+		assert.Error(t, updateUser(b))
+		profileChanged.ActiveBadge = ""
 		assert.Error(t, updateUser(b))
 
 	})
