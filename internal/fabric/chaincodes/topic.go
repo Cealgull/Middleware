@@ -480,7 +480,7 @@ func downvoteTopicCallback(logger *zap.Logger, db *gorm.DB) ChaincodeEventCallba
 
 func queryCategories(logger *zap.Logger, db *gorm.DB) ChaincodeQuery {
 	return func(c echo.Context) error {
-		categories := []Category{}
+		categories := []*Category{}
 		var _ = db.Find(&categories).Error
 
 		return c.JSON(success.Status(), categories)
@@ -489,7 +489,7 @@ func queryCategories(logger *zap.Logger, db *gorm.DB) ChaincodeQuery {
 
 func queryTags(logger *zap.Logger, db *gorm.DB) ChaincodeQuery {
 	return func(c echo.Context) error {
-		tags := []Tag{}
+		tags := []*Tag{}
 		var _ = db.Find(&tags).Error
 
 		return c.JSON(success.Status(), tags)

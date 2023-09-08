@@ -140,3 +140,23 @@ func (d *Downvote) MarshalJSON() ([]byte, error) {
 	})
 
 }
+
+func (t *Tag) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&struct {
+		Name        string `json:"name"`
+		Description string `json:"description"`
+	}{
+		Name:        t.Name,
+		Description: t.Description,
+	})
+}
+
+func (c *Category) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&struct {
+		Name  string `json:"name"`
+		Color string `json:"color"`
+	}{
+		Name:  c.Name,
+		Color: c.Color,
+	})
+}
