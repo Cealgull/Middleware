@@ -481,18 +481,18 @@ func queryPostsList(logger *zap.Logger, db *gorm.DB) ChaincodeQuery {
 			return c.JSON(chaincodeQueryParameterError.Status(), chaincodeQueryParameterError.Message())
 		}
 
-		posts := []Post{}
+		posts := []*Post{}
 
-		err := db.Transaction(func(tx *gorm.DB) error {
+		var _ = db.Transaction(func(tx *gorm.DB) error {
 
 			tx = tx.Model(&Post{}).
-        Preload("Creator").
+				Preload("Creator").
 				Preload("ReplyTo").
 				Preload("ReplyTo.Creator").
 				Preload("ReplyTo.Assets").
-        Preload("Upvotes").
-        Preload("Downvotes").
-        Preload("BelongTo").
+				Preload("Upvotes").
+				Preload("Downvotes").
+				Preload("BelongTo").
 				Scopes(paginate(q.PageOrdinal, q.PageSize))
 
 			if q.Creator != "" {
@@ -506,16 +506,9 @@ func queryPostsList(logger *zap.Logger, db *gorm.DB) ChaincodeQuery {
 
 			tx = tx.Where("deleted_at IS NULL")
 
-			if err := tx.Find(&posts).Error; err != nil {
-				return err
-			}
+			return tx.Find(&posts).Error
 
-			return nil
 		})
-
-		if err != nil {
-			return c.JSON(chaincodeInternalError.Status(), chaincodeInternalError.Message())
-		}
 
 		return c.JSON(success.Status(), posts)
 

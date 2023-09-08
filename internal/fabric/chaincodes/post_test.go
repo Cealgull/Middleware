@@ -290,6 +290,7 @@ func TestCreatePostCallback(t *testing.T) {
 
 		err := createPost(b)
 		assert.NoError(t, err)
+		postBlock.Hash = "bcde"
 	})
 
 	t.Run("Creating Post Callback with no replyTo", func(t *testing.T) {
