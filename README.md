@@ -1,6 +1,6 @@
 # Cealgull Middleware
 
-![Unittests](https://github.com/Cealgull/Verify/actions/workflows/go.yml/badge.svg)
+![Unittests](https://github.com/Cealgull/Middleware/actions/workflows/go.yml/badge.svg)
 [![codecov](https://codecov.io/gh/Cealgull/Middleware/graph/badge.svg?token=BGKUR08BRW)](https://codecov.io/gh/Cealgull/Middleware)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
@@ -27,9 +27,11 @@ user@localhost:~ $ go test ./...
 
 ### Smoke Test
 
-`tests/py/smoke` contains python scripts to pursue the smoke test for endpoints correctness. To run the smoke test suite,
+`tests/py/smoke` contains python scripts to pursue the smoke test for endpoints correctness.
 
-first set the constant in `tests/py/smoke/config.py` for two servers. Then run the following command,
+To run the smoke test suite,
+
+first set the constant in `tests/py/smoke/config.py` for two servers and perform the following setup.
 
 ```console
 user@localhost:/path/to/middleware/tests/py/ $ pipx install cryptography
@@ -39,7 +41,9 @@ user@localhost:/path/to/middleware/tests/py/ $ python -m smoke
 
 ### Load Test
 
-'tests/py/locust' this is the load tests based on the famous [locust](https://locust.io/) framework. To Install and run,
+`tests/py/locust` this is the load tests based on the famous [locust](https://locust.io/) framework.
+
+To run the load test, perform the following setup.
 
 ``` console
 user@localhost:/path/to/middleware/tests/py/ $ pipx install locust
