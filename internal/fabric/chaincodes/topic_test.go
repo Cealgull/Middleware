@@ -487,7 +487,9 @@ func TestInvokeUpdateTopic(t *testing.T) {
 
 		err := updateTopic(contract, c)
 
-		assert.Error(t, err)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+
 		payload.Tags = []string{"Genshin Impact", "Honkai Impact"}
 	})
 
@@ -502,7 +504,8 @@ func TestInvokeUpdateTopic(t *testing.T) {
 
 		err := updateTopic(contract, c)
 
-		assert.Error(t, err)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
 		payload.Category = "Mihoyo"
 	})
 
@@ -572,7 +575,7 @@ func TestUpdateTopicCallback(t *testing.T) {
 		Creator:  "0x123456789",
 		Images:   []string{"abcd"},
 		Category: "Mihoyo",
-		Tags:     []string{"Genshin Impact"},
+		Tags:     []string{"Genshin Impact", "Honkai Impact"},
 	}
 
 	storage := ipfsmock.NewMockIPFSStorage(t)
@@ -596,7 +599,7 @@ func TestUpdateTopicCallback(t *testing.T) {
 
 	reader := io.NopCloser(bytes.NewReader([]byte("document")))
 
-	t.Run("Creating Topic Callback with success", func(t *testing.T) {
+	t.Run("Update Topic Callback with success", func(t *testing.T) {
 
 		storage.EXPECT().Cat(topicBlock.CID).Return(reader, nil)
 
@@ -604,15 +607,6 @@ func TestUpdateTopicCallback(t *testing.T) {
 
 		err := updateTopic(b)
 		assert.NoError(t, err)
-	})
-
-	t.Run("Creating Topic Callback with hash not found", func(t *testing.T) {
-		topicBlock.Hash = "unknown"
-
-		b, _ := json.Marshal(&topicBlock)
-
-		err := updateTopic(b)
-		assert.Error(t, err)
 	})
 
 }
@@ -956,6 +950,25 @@ func TestQueryTopicGet(t *testing.T) {
 
 		var _ = query(c)
 		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+
+	t.Run("Querying Topic With Failure", func(t *testing.T) {
+
+		type TopicGetRequest struct {
+			Hash string `json:"hash"`
+		}
+
+		payload := TopicGetRequest{
+			Hash: "topic5",
+		}
+		req := httptest.NewRequest(http.MethodPost, "/api/topic/query/get", newJsonRequest(&payload))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+
+		rec := httptest.NewRecorder()
+		c := server.NewContext(req, rec)
+
+		var _ = query(c)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 }
 
