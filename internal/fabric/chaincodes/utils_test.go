@@ -17,8 +17,8 @@ func TestValidate(t *testing.T) {
 	}
 
 	tags := []*Tag{
-		{Name: "Genshin Impact", Creator: user, Description: "Genshin Impact"},
-		{Name: "Honkai Impact", Creator: user, Description: "Honkai Impact"},
+    {Name: "Genshin Impact", CreatorWallet: user.Wallet, Description: "Genshin Impact"},
+    {Name: "Honkai Impact", CreatorWallet: user.Wallet, Description: "Honkai Impact"},
 	}
 
 	db := newSqliteDB()
