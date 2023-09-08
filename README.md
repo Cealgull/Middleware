@@ -1,7 +1,7 @@
 # Cealgull Middleware
 
 ![Unittests](https://github.com/Cealgull/Verify/actions/workflows/go.yml/badge.svg)
-[![codecov](https://codecov.io/gh/Cealgull/Verify/branch/main/graph/badge.svg?token=JK8ZJ4VM79)](https://codecov.io/gh/Cealgull/Verify)
+[![codecov](https://codecov.io/gh/Cealgull/Middleware/graph/badge.svg?token=BGKUR08BRW)](https://codecov.io/gh/Cealgull/Middleware)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 Cealgull Middleware is a middleware which receive requests from Cealgull app and interop with Hyperledger Fabric, PostgresDB and a simple Kubo/IPFS Gateway.
