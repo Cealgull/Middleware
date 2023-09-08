@@ -49,3 +49,21 @@ func TestFilter(t *testing.T) {
 	result := Filter(data, cmp)
 	assert.ElementsMatch(t, result, []int{1, 2, 3, 4, 5})
 }
+
+func TestFilterMap(t *testing.T) {
+	f := func(x int) int {
+		return x + 1
+	}
+	g := func(x int) bool {
+		return x > 0
+	}
+	data := []int{-1, 1, 2}
+	result := FilterMap(data, f, g)
+	assert.ElementsMatch(t, result, []int{2, 3})
+}
+
+func TestContains(t *testing.T) {
+	data := []int{-1, 1, 2}
+	assert.True(t, Contains(data, 1))
+	assert.False(t, Contains(data, -2))
+}

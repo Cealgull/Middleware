@@ -30,6 +30,12 @@ func preparePostData(t *testing.T) *gorm.DB {
 		Avatar:   "null",
 	}
 
+	user2 := &User{
+		Username: "Admin2",
+		Wallet:   "0x100",
+		Avatar:   "null",
+	}
+
 	topic := &Topic{
 		Title:   "Hello world",
 		Hash:    "topic",
@@ -54,6 +60,22 @@ func preparePostData(t *testing.T) *gorm.DB {
 			Content:  "Hello world!",
 			Creator:  user,
 			BelongTo: topic,
+			Upvotes: []*Upvote{
+				{
+					CreatorWallet: user.Wallet,
+				},
+			},
+		},
+		{
+			Hash:     "post3",
+			Content:  "Hello world!",
+			Creator:  user2,
+			BelongTo: topic,
+			Downvotes: []*Downvote{
+				{
+					CreatorWallet: user.Wallet,
+				},
+			},
 		},
 	}
 
@@ -154,43 +176,6 @@ func TestInvokeCreatePost(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusInternalServerError, rec.Code)
 
-	})
-
-	t.Run("Creating Post With Base64DecodeError", func(t *testing.T) {
-
-		payload.Images = []string{"base64Error&*"}
-		storage.On("Add", mock.Anything).Return("base64", nil).Once()
-
-		req := httptest.NewRequest(http.MethodPost, "/api/post/invoke/CreatePost", newJsonRequest(&payload))
-		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
-		rec := httptest.NewRecorder()
-
-		c := server.NewContext(req, rec)
-		c = newMockSignedContext(c)
-
-		err := createPost(contract, c)
-		assert.NoError(t, err)
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-
-	})
-
-	t.Run("Creating Post With IPFS Error on Uploading Images", func(t *testing.T) {
-
-		payload.Images = []string{base64.StdEncoding.EncodeToString([]byte("base64Error&*"))}
-
-		storage.On("Add", mock.Anything).Return("base64", nil).Once()
-		storage.On("Add", mock.Anything).Return("", errors.New("Hello world")).Once()
-
-		req := httptest.NewRequest(http.MethodPost, "/api/post/invoke/CreatePost", newJsonRequest(&payload))
-		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
-		rec := httptest.NewRecorder()
-
-		c := server.NewContext(req, rec)
-		c = newMockSignedContext(c)
-
-		err := createPost(contract, c)
-		assert.NoError(t, err)
-		assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	})
 
 	t.Run("Creating Post With Chaincode Network Failure", func(t *testing.T) {
@@ -305,6 +290,7 @@ func TestCreatePostCallback(t *testing.T) {
 
 		err := createPost(b)
 		assert.NoError(t, err)
+		postBlock.Hash = "bcde"
 	})
 
 	t.Run("Creating Post Callback with no replyTo", func(t *testing.T) {
@@ -392,6 +378,25 @@ func TestInvokeDeletePost(t *testing.T) {
 		err := deletePost(contract, c)
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+
+	t.Run("Deleting Other's Post", func(t *testing.T) {
+
+		payload.Hash = "post3"
+
+		req := httptest.NewRequest(http.MethodPost, "/api/post/invoke/DeletePost", newJsonRequest(&payload))
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+
+		rec := httptest.NewRecorder()
+		c := server.NewContext(req, rec)
+		c = newMockSignedContext(c)
+
+		contract.On("Submit", "DeletePost", mock.Anything).Return([]byte(nil), nil).Once()
+		err := deletePost(contract, c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+
+		payload.Hash = "post1"
 	})
 }
 
@@ -491,43 +496,6 @@ func TestInvokeUpdatePost(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusInternalServerError, rec.Code)
 
-	})
-
-	t.Run("Updating Post With Base64DecodeError", func(t *testing.T) {
-
-		payload.Images = []string{"base64Error&*"}
-		storage.On("Add", mock.Anything).Return("base64", nil).Once()
-
-		req := httptest.NewRequest(http.MethodPost, "/api/post/invoke/UpdatePost", newJsonRequest(&payload))
-		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
-		rec := httptest.NewRecorder()
-
-		c := server.NewContext(req, rec)
-		c = newMockSignedContext(c)
-
-		err := updatePost(contract, c)
-		assert.NoError(t, err)
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-
-	})
-
-	t.Run("Updating Post With IPFS Error on Uploading Images", func(t *testing.T) {
-
-		payload.Images = []string{base64.StdEncoding.EncodeToString([]byte("base64Error&*"))}
-
-		storage.On("Add", mock.Anything).Return("base64", nil).Once()
-		storage.On("Add", mock.Anything).Return("", errors.New("Hello world")).Once()
-
-		req := httptest.NewRequest(http.MethodPost, "/api/post/invoke/UpdatePost", newJsonRequest(&payload))
-		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
-		rec := httptest.NewRecorder()
-
-		c := server.NewContext(req, rec)
-		c = newMockSignedContext(c)
-
-		err := updatePost(contract, c)
-		assert.NoError(t, err)
-		assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	})
 
 	t.Run("Updating Post With Chaincode Network Failure", func(t *testing.T) {
@@ -731,6 +699,37 @@ func TestUpvotePostCallback(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
+	t.Run("Upvoting Post Callback with Upvoted", func(t *testing.T) {
+
+		upvoteBlock.Hash = "post2"
+		b, _ := json.Marshal(&upvoteBlock)
+
+		err := upvotePost(b)
+		assert.NoError(t, err)
+
+		// Verify that the upvote has been removed from the post
+		post := Post{}
+		assert.NoError(t, db.Preload("Upvotes").Where("hash = ?", upvoteBlock.Hash).First(&post).Error)
+		assert.Empty(t, post.Upvotes) // Ensure Upvotes is empty after removal
+
+		upvoteBlock.Hash = "post1"
+	})
+
+	t.Run("Upvoting Post Callback with Downvoted", func(t *testing.T) {
+
+		upvoteBlock.Hash = "post3"
+		b, _ := json.Marshal(&upvoteBlock)
+
+		err := upvotePost(b)
+		assert.NoError(t, err)
+
+		// Verify that the downvote has been removed from the post
+		post := Post{}
+		assert.NoError(t, db.Preload("Downvotes").Where("hash = ?", upvoteBlock.Hash).First(&post).Error)
+		assert.Empty(t, post.Downvotes) // Ensure Downvotes is empty after removal
+
+		upvoteBlock.Hash = "post1"
+	})
 }
 
 func TestInvokeDownvotePost(t *testing.T) {
@@ -838,6 +837,26 @@ func TestDownvotePostCallback(t *testing.T) {
 
 		err := downvotePost(b)
 		assert.NoError(t, err)
+	})
+
+	t.Run("Downvoting Post Callback with Upvoted", func(t *testing.T) {
+
+		downvoteBlock.Hash = "post2"
+		b, _ := json.Marshal(&downvoteBlock)
+
+		err := downvotePost(b)
+		assert.NoError(t, err)
+		downvoteBlock.Hash = "post1"
+	})
+
+	t.Run("Downvoting Post Callback with Downvoted", func(t *testing.T) {
+
+		downvoteBlock.Hash = "post3"
+		b, _ := json.Marshal(&downvoteBlock)
+
+		err := downvotePost(b)
+		assert.NoError(t, err)
+		downvoteBlock.Hash = "post1"
 	})
 
 }

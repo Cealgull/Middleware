@@ -1,8 +1,7 @@
 package chaincodes
 
 import (
-
-  "github.com/Cealgull/Middleware/internal/fabric/common"
+	"github.com/Cealgull/Middleware/internal/fabric/common"
 
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
@@ -48,10 +47,10 @@ func WithChaincodeQuery(token string, query ChaincodeQuery) ChaincodeMiddlewareO
 }
 
 func WithChaincodeCustom(location string, custom ChaincodeCustom) ChaincodeMiddlewareOption {
-  return func(cc *ChaincodeMiddleware) error {
-    cc.custom[location] = custom
-    return nil
-  }
+	return func(cc *ChaincodeMiddleware) error {
+		cc.custom[location] = custom
+		return nil
+	}
 }
 
 func NewChaincodeMiddleware(logger *zap.Logger, net common.Network, contract common.Contract, options ...ChaincodeMiddlewareOption) *ChaincodeMiddleware {
@@ -78,9 +77,7 @@ func (cc *ChaincodeMiddleware) Register(g *echo.Group, e *echo.Echo) {
 
 	for action, invoke := range cc.invokes {
 		i.POST("/"+action, func(invoke ChaincodeInvoke) echo.HandlerFunc {
-			return func(c echo.Context) error {
-				return invoke(cc.contract, c)
-			}
+			return func(c echo.Context) error { return invoke(cc.contract, c) }
 		}(invoke))
 	}
 
@@ -88,17 +85,13 @@ func (cc *ChaincodeMiddleware) Register(g *echo.Group, e *echo.Echo) {
 
 	for action, query := range cc.queries {
 		q.POST("/"+action, func(query ChaincodeQuery) echo.HandlerFunc {
-			return func(c echo.Context) error {
-				return query(c)
-			}
+			return func(c echo.Context) error { return query(c) }
 		}(query))
 	}
 
 	for location, custom := range cc.custom {
 		e.POST(location, func(custom ChaincodeCustom) echo.HandlerFunc {
-			return func(c echo.Context) error {
-				return custom(cc.contract,c)
-			}
+			return func(c echo.Context) error { return custom(cc.contract, c) }
 		}(custom))
 	}
 

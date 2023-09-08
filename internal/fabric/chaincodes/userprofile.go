@@ -5,6 +5,8 @@ import (
 	"errors"
 	"net/http"
 
+	"time"
+
 	"github.com/Cealgull/Middleware/internal/fabric/common"
 	. "github.com/Cealgull/Middleware/internal/models"
 	"github.com/Cealgull/Middleware/internal/utils"
@@ -14,7 +16,6 @@ import (
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-	"time"
 	// "gorm.io/hints"
 )
 
@@ -42,10 +43,7 @@ func invokeCreateUser(logger *zap.Logger, db *gorm.DB) ChaincodeInvoke {
 
 		b, _ := json.Marshal(&block)
 
-		b, err := contract.Submit("CreateUser",
-			client.WithBytesArguments(b))
-
-		if err != nil {
+		if _, err := contract.Submit("CreateUser", client.WithBytesArguments(b)); err != nil {
 			chaincodeInvokeFailure := ChaincodeInvokeFailureError{"CreateUser"}
 			return c.JSON(chaincodeInvokeFailure.Status(), chaincodeInvokeFailure.Message())
 		}
@@ -110,10 +108,14 @@ func invokeUpdateUser(logger *zap.Logger, db *gorm.DB) ChaincodeInvoke {
 			}), profile.ActiveRole) || !utils.Contains(utils.Map(userProfile.BadgeRelationsReceived, func(r *BadgeRelation) string {
 				return r.BadgeName
 			}), profile.ActiveBadge) {
-				return errors.New("User does not have the role or badge")
+				return errors.New("user does not have the role or badge")
 			}
 			return nil
 		})
+
+		if err != nil {
+			return c.JSON(chaincodeInternalError.Status(), chaincodeInternalError.Message())
+		}
 
 		b, _ := json.Marshal(&profile)
 
@@ -244,11 +246,14 @@ func authLogin(logger *zap.Logger, db *gorm.DB) ChaincodeCustom {
 			Preload("User.ActiveBadgeRelation").
 			Preload("User.ActiveRoleRelation").
 			Where("user_wallet = ?", wallet).
-			First(&profile).Error; err != nil {
+			First(&profile).Error; err == nil {
+			return c.JSON(http.StatusOK, &profile)
+		} else if errors.Is(err, gorm.ErrRecordNotFound) {
 			return invokeCreateUser(logger, db)(contract, c)
+		} else {
+			return c.JSON(chaincodeInternalError.Status(), chaincodeInternalError.Message())
 		}
 
-		return c.JSON(http.StatusOK, &profile)
 	}
 }
 
@@ -350,7 +355,7 @@ func queryStatistics(logger *zap.Logger, db *gorm.DB) ChaincodeQuery {
 
 		r := &StatResponse{}
 
-		err := db.Transaction(func(tx *gorm.DB) error {
+		var _ = db.Transaction(func(tx *gorm.DB) error {
 
 			upvotesGrantedQuery := tx.Table("upvotes").Select("COUNT(*) as upvotes_granted").Where("creator_wallet = ?", q.Wallet)
 			postsCreatedQuery := tx.Table("posts").Select("COUNT(*) as posts_created").Where("creator_wallet = ?", q.Wallet)
@@ -371,22 +376,14 @@ func queryStatistics(logger *zap.Logger, db *gorm.DB) ChaincodeQuery {
 
 			upvotesReceivedQuery := tx.Table("(?) as u1, (?) as u2", upvotesPostsReceivedQuery, upvotesTopicReceivedQuery).Select("(u1 + u2) as upvotes_received")
 
-			if err := tx.Table("(?) as upvoted_granted, (?) as upvotes_received, (?) as topics_created, (?) as posts_created, (?) as register_date",
+			return tx.Table("(?) as upvoted_granted, (?) as upvotes_received, (?) as topics_created, (?) as posts_created, (?) as register_date",
 				upvotesGrantedQuery,
 				upvotesReceivedQuery,
 				topicsCreatedQuery,
 				postsCreatedQuery,
-				registerDateQuery).Scan(r).Error; err != nil {
-				return err
-			}
-
-			return nil
+				registerDateQuery).Scan(r).Error
 
 		})
-
-		if err != nil {
-			return c.JSON(chaincodeInternalError.Status(), chaincodeInternalError.Message())
-		}
 
 		return c.JSON(success.Status(), r)
 	}

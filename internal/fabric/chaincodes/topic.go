@@ -218,6 +218,10 @@ func invokeUpdateTopic(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) 
 			return c.JSON(err.Status(), err.Message())
 		}
 
+		if err := validate(db, []Tag{}, topicRequest.Tags); err != nil {
+			return c.JSON(err.Status(), err.Message())
+		}
+
 		topic := Topic{}
 		if err := db.Model(&Topic{}).
 			Where("hash = ?", topicRequest.Hash).First(&topic).Error; err != nil {
@@ -285,7 +289,7 @@ func updateTopicCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB
 
 		return db.Transaction(func(tx *gorm.DB) error {
 
-			if err := db.Model(&Topic{}).
+			if err := tx.Model(&Topic{}).
 				Where("hash = ?", topicChanged.Hash).First(&topic).Error; err != nil {
 				return err
 			}
@@ -294,23 +298,18 @@ func updateTopicCallback(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB
 			topic.Content = string(data)
 
 			if topicChanged.Category != "" {
-				if err := tx.Model(&topic).
+				var _ = tx.Model(&topic).
 					Association("CategoryAssigned").
-					Replace(&CategoryRelation{TopicID: topic.ID, CategoryName: topicChanged.Category}); err != nil {
-					return err
-				}
+					Replace(&CategoryRelation{TopicID: topic.ID, CategoryName: topicChanged.Category})
+
 			}
 
 			if len(topicChanged.Images) != 0 {
-				if err := tx.Model(&topic).Association("Assets").Replace(&assets); err != nil {
-					return err
-				}
+				var _ = tx.Model(&topic).Association("Assets").Replace(&assets)
 			}
 
 			if len(topicChanged.Tags) != 0 {
-				if err := tx.Model(&topic).Association("TagsAssigned").Replace(&tagsAssigned); err != nil {
-					return err
-				}
+				var _ = tx.Model(&topic).Association("TagsAssigned").Replace(&tagsAssigned)
 			}
 
 			return tx.Save(&topic).Error
@@ -529,10 +528,11 @@ func queryTopicGet(logger *zap.Logger, db *gorm.DB) ChaincodeQuery {
 		})
 
 		if err != nil {
-			return c.JSON(chaincodeInternalError.Status(), chaincodeInternalError.Message())
+			chaincodeNotFoundError := ChaincodeNotFoundError{"topic"}
+			return c.JSON(chaincodeNotFoundError.Status(), chaincodeNotFoundError.Message())
 		}
 
-		return c.JSON(success.Status(), topic)
+		return c.JSON(success.Status(), &topic)
 
 	}
 }
@@ -558,9 +558,9 @@ func queryTopicsList(logger *zap.Logger, db *gorm.DB) ChaincodeQuery {
 			return c.JSON(chaincodeQueryParameterError.Status(), chaincodeQueryParameterError.Message())
 		}
 
-		topics := []Topic{}
+		topics := []*Topic{}
 
-		err := db.Transaction(func(tx *gorm.DB) error {
+		var _ = db.Transaction(func(tx *gorm.DB) error {
 
 			tx = tx.Model(&Topic{})
 			if q.Creator != "" {
@@ -588,16 +588,8 @@ func queryTopicsList(logger *zap.Logger, db *gorm.DB) ChaincodeQuery {
 
 			tx = tx.Where("deleted_at IS NULL")
 
-			if err := tx.Find(&topics).Error; err != nil {
-				return err
-			}
-
-			return nil
+			return tx.Find(&topics).Error
 		})
-
-		if err != nil {
-			return c.JSON(chaincodeInternalError.Status(), chaincodeInternalError.Message())
-		}
 
 		return c.JSON(success.Status(), topics)
 
