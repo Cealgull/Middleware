@@ -18,6 +18,9 @@ postgres:
   port: 5432
   name: cealgull
   user: cealgull
+  prometheus:
+    port: 5000
+    enabled: false
 
 verify:
   host: 172.17.0.1
