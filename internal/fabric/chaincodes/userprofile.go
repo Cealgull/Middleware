@@ -397,9 +397,9 @@ func NewUserProfileMiddleware(logger *zap.Logger, net common.Network, db *gorm.D
 		WithChaincodeHandler("create", "CreateUser", invokeCreateUser(logger, db), createUserCallback(logger, db)),
 		WithChaincodeHandler("update", "UpdateUser", invokeUpdateUser(logger, db), updateUserCallback(logger, db)),
 
-		WithChaincodeQuery("profile", queryProfile(logger, db)),
-		WithChaincodeQuery("view", queryUser(logger, db)),
-		WithChaincodeQuery("statistics", queryStatistics(logger, db)),
+		WithChaincodeQueryPost("profile", queryProfile(logger, db)),
+		WithChaincodeQueryPost("view", queryUser(logger, db)),
+		WithChaincodeQueryPost("statistics", queryStatistics(logger, db)),
 
 		WithChaincodeCustom("/auth/login", authLogin(logger, db)),
 		WithChaincodeCustom("/auth/logout", authLogin(logger, db)),

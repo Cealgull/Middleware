@@ -607,8 +607,8 @@ func NewTopicChaincodeMiddleware(logger *zap.Logger, net common.Network, ipfs *i
 		WithChaincodeHandler("upvote", "UpvoteTopic", invokeUpvoteTopic(logger, db), upvoteTopicCallback(logger, db)),
 		WithChaincodeHandler("downvote", "DownvoteTopic", invokeDownvoteTopic(logger, db), downvoteTopicCallback(logger, db)),
 
-		WithChaincodeQuery("categories", queryCategories(logger, db)),
-		WithChaincodeQuery("tags", queryTags(logger, db)),
-		WithChaincodeQuery("list", queryTopicsList(logger, db)),
+		WithChaincodeQueryGet("categories", queryCategories(logger, db)),
+		WithChaincodeQueryGet("tags", queryTags(logger, db)),
+		WithChaincodeQueryPost("list", queryTopicsList(logger, db)),
 	)
 }

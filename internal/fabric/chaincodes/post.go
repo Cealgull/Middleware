@@ -525,6 +525,6 @@ func NewPostChaincodeMiddleware(logger *zap.Logger, net common.Network, ipfs *ip
 		WithChaincodeHandler("downvote", "DownvotePost", invokeDownvotePost(logger, db), downvotePostCallback(logger, db)),
 		WithChaincodeHandler("delete", "DeletePost", invokeDeletePost(logger, db), deletePostCallback(logger, db)),
 
-		WithChaincodeQuery("list", queryPostsList(logger, db)),
+		WithChaincodeQueryPost("list", queryPostsList(logger, db)),
 	)
 }

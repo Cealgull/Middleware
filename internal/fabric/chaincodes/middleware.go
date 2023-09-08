@@ -21,9 +21,10 @@ type ChaincodeMiddleware struct {
 	net      common.Network
 	contract common.Contract
 
-	invokes   map[string]ChaincodeInvoke
-	callbacks map[string]ChaincodeEventCallback
-	queries   map[string]ChaincodeQuery
+	invokes    map[string]ChaincodeInvoke
+	callbacks  map[string]ChaincodeEventCallback
+	queryPosts map[string]ChaincodeQuery
+	queryGets  map[string]ChaincodeQuery
 
 	custom map[string]ChaincodeCustom
 	logger *zap.Logger
@@ -39,9 +40,16 @@ func WithChaincodeHandler(action string, eventName string, invoke ChaincodeInvok
 	}
 }
 
-func WithChaincodeQuery(token string, query ChaincodeQuery) ChaincodeMiddlewareOption {
+func WithChaincodeQueryPost(token string, query ChaincodeQuery) ChaincodeMiddlewareOption {
 	return func(cc *ChaincodeMiddleware) error {
-		cc.queries[token] = query
+		cc.queryPosts[token] = query
+		return nil
+	}
+}
+
+func WithChaincodeQueryGet(token string, query ChaincodeQuery) ChaincodeMiddlewareOption {
+	return func(cc *ChaincodeMiddleware) error {
+		cc.queryGets[token] = query
 		return nil
 	}
 }
@@ -55,14 +63,15 @@ func WithChaincodeCustom(location string, custom ChaincodeCustom) ChaincodeMiddl
 
 func NewChaincodeMiddleware(logger *zap.Logger, net common.Network, contract common.Contract, options ...ChaincodeMiddlewareOption) *ChaincodeMiddleware {
 	cc := ChaincodeMiddleware{
-		name:      contract.ChaincodeName(),
-		net:       net,
-		contract:  contract,
-		invokes:   make(map[string]ChaincodeInvoke),
-		callbacks: make(map[string]ChaincodeEventCallback),
-		queries:   make(map[string]ChaincodeQuery),
-		custom:    make(map[string]ChaincodeCustom),
-		logger:    logger,
+		name:       contract.ChaincodeName(),
+		net:        net,
+		contract:   contract,
+		invokes:    make(map[string]ChaincodeInvoke),
+		callbacks:  make(map[string]ChaincodeEventCallback),
+		queryPosts: make(map[string]ChaincodeQuery),
+		queryGets:  make(map[string]ChaincodeQuery),
+		custom:     make(map[string]ChaincodeCustom),
+		logger:     logger,
 	}
 
 	for _, option := range options {
@@ -83,8 +92,14 @@ func (cc *ChaincodeMiddleware) Register(g *echo.Group, e *echo.Echo) {
 
 	q := g.Group("/query")
 
-	for action, query := range cc.queries {
+	for action, query := range cc.queryPosts {
 		q.POST("/"+action, func(query ChaincodeQuery) echo.HandlerFunc {
+			return func(c echo.Context) error { return query(c) }
+		}(query))
+	}
+
+	for action, query := range cc.queryGets {
+		q.GET("/"+action, func(query ChaincodeQuery) echo.HandlerFunc {
 			return func(c echo.Context) error { return query(c) }
 		}(query))
 	}
