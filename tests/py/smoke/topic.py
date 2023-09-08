@@ -84,7 +84,7 @@ class TopicTestCase(unittest.TestCase):
         self.assertEqual(topic["title"], "test")
         self.assertEqual(topic["content"], "test")
 
-    def test_003_invoke_upvotes(self):
+    def test_0003_invoke_upvotes(self):
         hash = self.create_topic(self.request, self.num)
         time.sleep(0.5)
 
@@ -100,7 +100,7 @@ class TopicTestCase(unittest.TestCase):
         res = self.query_topics(self.request, self.num)[0]
         self.assertNotIn(self.credential.wallet, res["upvotes"])
 
-    def test_004_invoke_downvotes(self):
+    def test_0004_invoke_downvotes(self):
         hash = self.create_topic(self.request, self.num)
         time.sleep(0.5)
 
@@ -116,7 +116,7 @@ class TopicTestCase(unittest.TestCase):
         res = self.query_topics(self.request, self.num)[0]
         self.assertNotIn(self.credential.wallet, res["downvotes"])
 
-    def test_005_invoke_upvote_downvote(self):
+    def test_0005_invoke_upvote_downvote(self):
         hash = self.create_topic(self.request, self.num)
         time.sleep(0.5)
 
@@ -135,7 +135,7 @@ class TopicTestCase(unittest.TestCase):
         self.assertIn(self.credential.wallet, res["upvotes"])
         self.assertNotIn(self.credential.wallet, res["downvotes"])
 
-    def test_006_invoke_update_topics(self):
+    def test_0006_invoke_update_topics(self):
         num_2 = self.create_plugs(self.request)
         hash = self.create_topic(self.request, self.num)
 
@@ -154,7 +154,7 @@ class TopicTestCase(unittest.TestCase):
 
         time.sleep(0.5)
 
-    def test_007_invoke_delete_topics(self):
+    def test_0007_invoke_delete_topics(self):
         hash = self.create_topic(self.request, self.num)
         time.sleep(0.5)
         self.request(
@@ -163,3 +163,6 @@ class TopicTestCase(unittest.TestCase):
         )
         time.sleep(0.5)
         print(self.query_topics(self.request, self.num))
+
+    def test_0008_query_categories(self):
+        print(self.request("/api/topic/query/categories", {}))
