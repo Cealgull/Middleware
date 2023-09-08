@@ -85,8 +85,13 @@ func (t *Topic) MarshalJSON() ([]byte, error) {
 		Title:   t.Title,
 		Creator: t.Creator,
 		Content: t.Content,
-		CategoryAssigned: &DisplayCategory{Name: t.CategoryAssigned.CategoryName,
-			Color: t.CategoryAssigned.Category.Color},
+		CategoryAssigned: func() *DisplayCategory {
+			if t.CategoryAssigned != nil {
+				return &DisplayCategory{Name: t.CategoryAssigned.CategoryName,
+					Color: t.CategoryAssigned.Category.Color}
+			}
+			return nil
+		}(),
 		TagsAssigned: utils.Map(t.TagsAssigned, func(t *TagRelation) *DisplayTag {
 			return &DisplayTag{Name: t.TagName}
 		}),
