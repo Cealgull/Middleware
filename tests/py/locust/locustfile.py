@@ -58,15 +58,53 @@ class TopicSection(TaskSet):
         self.request(
             "/api/topic/query/list",
             {
+                "pageOrdinal": 1,
+                "pageSize": 10,
                 "category": random.choice(self.categories),
                 "tags": random.sample(self.tags, random.randint(0, len(self.tags))),
             },
         )
 
+    @task(2)
+    def upvote_topic(self):
+        topics = self.request(
+            "/api/topic/query/list",
+            {
+                "pageOrdinal": 1,
+                "pageSize": 10,
+                "category": random.choice(self.categories),
+                "tags": random.sample(self.tags, random.randint(0, len(self.tags))),
+            },
+        ).json()
 
-class PostSection(TaskSet):
-    pass
+        if len(topics) > 0:
+            self.request(
+                "/api/topic/invoke/upvote",
+                {
+                    "hash": random.choice(topics)["hash"],
+                },
+            )
+
+    @task(2)
+    def downvote_topic(self):
+        topics = self.request(
+            "/api/topic/query/list",
+            {
+                "pageOrdinal": 1,
+                "pageSize": 10,
+                "category": random.choice(self.categories),
+                "tags": random.sample(self.tags, random.randint(0, len(self.tags))),
+            },
+        ).json()
+
+        if len(topics) > 0:
+            self.request(
+                "/api/topic/invoke/downvote",
+                {
+                    "hash": random.choice(topics)["hash"],
+                },
+            )
 
 
 class LoginUser(HttpUser):
-    tasks = {UserProfileSection: 2, TopicSection: 3}
+    tasks = {TopicSection: 10}
