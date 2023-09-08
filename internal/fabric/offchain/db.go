@@ -82,5 +82,17 @@ func NewOffchainStore(dialector gorm.Dialector, config *config.PostgresGormConfi
 		))
 	}
 
+	if config.Seed {
+		if !db.Migrator().HasTable(&User{}) {
+			user := &User{Username: "admin", Wallet: "0x0994edd4e11125c26df5ac32553de95c569934cf32f594f54090b423", Avatar: ""}
+			var _ = db.Create(user)
+			var _ = db.Create(&Profile{Signature: "this is admin", UserWallet: &user.Wallet})
+			var _ = db.Create(&CategoryGroup{Name: "General", Color: "#4F709C"})
+			var _ = db.Create(&Category{CategoryGroupName: "General", Name: "General Discussion", Color: "#E5D283"})
+			var _ = db.Create(&Category{CategoryGroupName: "General", Name: "General Topic", Color: "#213555"})
+			var _ = db.Create(&[]Tag{{Name: "Tag1"}, {Name: "Tag2"}, {Name: "Tag3"}, {Name: "Tag4"}, {Name: "Tag5"}})
+		}
+	}
+
 	return db, err
 }
