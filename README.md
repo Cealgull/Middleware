@@ -21,16 +21,25 @@ user@localhost:~ $ mockery
 user@localhost:~ $ go test ./...
 ```
 
+### Smoke Test
+
+`tests/py/smoke` contains python scripts to pursue the smoke test for endpoints correctness. To run the smoke test suite,
+
+first set the constant in `tests/py/smoke/config.py` for two servers. Then run the following command,
+
+```console
+user@localhost:/path/to/middleware/tests/py/ pipx install cryptography
+
+user@localhost:/path/to/middleware/tests/py/ python -m smoke
+```
+
 ### Load Test
 
-Cealgull middleware provides two sets of test suite, `tests/k6` contains major [k6](https://k6.io/) load testing setup and 
-
-'tests/py' contains smoke tests and cryptography-driven tests based on [locust](https://locust.io/). To Install, 
+'tests/py/locust' this is the load tests based on the famous [locust](https://locust.io/) framework. To Install and run,
 
 ``` console
-user@localhost:~ $ pipx install locust
-user@localhost:~ $ go install go.k6.io/xk6/cmd/xk6@latest
-user@localhost:~ $ xk6 build --with github.com/szkiba/xk6-dashboard@latest --with github.com/grafana/xk6-output-influxdb
-user@loclahost:tests/k6 $ yarn install && yarn build
+user@localhost:/path/to/middleware/tests/py/ pipx install locust
+
+user@localhost:/path/to/middleware/tests/py/locust locust --users 25 --host http://localhost:8089 -f locustfile.py
 ```
 
