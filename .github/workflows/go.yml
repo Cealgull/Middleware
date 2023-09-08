@@ -18,7 +18,13 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v3
         with:
-          go-version: 1.19
+          go-version: 1.20
+
+      - name: Install mockery
+        run: go install github.com/vektra/mockery/v2@v2.33.2
+
+      - name: Generate mock files
+        run: mockery
 
       - name: Run Coverage
         run: go test -v ./... -coverprofile=coverage.out -covermode=atomic
