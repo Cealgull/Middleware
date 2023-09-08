@@ -20,7 +20,7 @@ func TestNewOffchainStore(t *testing.T) {
 		mockConn, _, _ := sqlmock.New()
 
 		dialector := NewPostgresDialector(WithPostgresConn(mockConn))
-		store, err := NewOffchainStore(dialector, &config.PrometheusConfig{Enabled: true, Port: 9090})
+		store, err := NewOffchainStore(dialector, &config.PostgresGormConfig{Prometheus: config.PrometheusConfig{Enabled: true, Port: 9090}})
 
 		assert.Error(t, err)
 		assert.Nil(t, store)
@@ -29,18 +29,18 @@ func TestNewOffchainStore(t *testing.T) {
 
 	t.Run("testing with mock connection with automigrate success", func(t *testing.T) {
 
-		dialector := sqlite.Open("file::memory:?cache=shared")
+		dialector := sqlite.Open("file::memory:")
 
-    store, err := NewOffchainStore(dialector, &config.PrometheusConfig{Enabled: true, Port: 9090})
+		store, err := NewOffchainStore(dialector, &config.PostgresGormConfig{Prometheus: config.PrometheusConfig{Enabled: true, Port: 9090}})
 
 		assert.NoError(t, err)
 		assert.NotNil(t, store)
 	})
 
 	t.Run("testing with dsn config", func(t *testing.T) {
-		c := config.PostgresDSNConfig{}
-		dialector := NewPostgresDialector(WithPostgresDSNConfig(&c))
-		var _, err = NewOffchainStore(dialector, &config.PrometheusConfig{Enabled: true, Port: 9090})
+		c := config.PostgresGormConfig{}
+		dialector := NewPostgresDialector(WithPostgresGormConfig(&c))
+		_, err := NewOffchainStore(dialector, &config.PostgresGormConfig{Prometheus: config.PrometheusConfig{Enabled: true, Port: 9090}})
 		assert.Error(t, err)
 	})
 }

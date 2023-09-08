@@ -32,7 +32,7 @@ func newSqliteDB() *gorm.DB {
 
 	dialector := sqlite.Open("file::memory:")
 
-	db, _ := offchain.NewOffchainStore(dialector, &config.PrometheusConfig{Enabled: false})
+	db, _ := offchain.NewOffchainStore(dialector, &config.PostgresGormConfig{Prometheus: config.PrometheusConfig{Enabled: true, Port: 9090}})
 
 	if err := db.Exec("PRAGMA foreign_keys = ON", nil).Error; err != nil {
 		panic(err)

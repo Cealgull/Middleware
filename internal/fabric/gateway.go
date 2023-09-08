@@ -128,9 +128,9 @@ func initNetwork(config *config.GatewayConfig) (*client.Network, error) {
 
 func NewGatewayMiddleware(logger *zap.Logger, ipfs *ipfs.IPFSManager, config *config.MiddlewareConfig) (*GatewayMiddleware, error) {
 
-	dialector := offchain.NewPostgresDialector(offchain.WithPostgresDSNConfig(&config.Postgres))
+	dialector := offchain.NewPostgresDialector(offchain.WithPostgresGormConfig(&config.Postgres))
 
-	db, err := offchain.NewOffchainStore(dialector, &config.Postgres.Prometheus)
+	db, err := offchain.NewOffchainStore(dialector, &config.Postgres)
 
 	if err != nil {
 		return nil, err

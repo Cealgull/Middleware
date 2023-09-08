@@ -9,11 +9,12 @@ type GatewayConfig struct {
 	GatewayPeer  string `yaml:"gatewayPeer"`
 }
 
-type PostgresDSNConfig struct {
+type PostgresGormConfig struct {
 	Host       string           `yaml:"host"`
 	Port       int              `yaml:"port"`
 	User       string           `yaml:"user"`
 	Name       string           `yaml:"name"`
+	Seed       bool             `yaml:"seed"`
 	Prometheus PrometheusConfig `yaml:"prometheus"`
 }
 
@@ -28,15 +29,15 @@ type VerifyConfig struct {
 }
 
 type PrometheusConfig struct {
-	Port    int    `yaml:"port"`
-	Enabled bool   `yaml:"enabled"`
+	Port    int  `yaml:"port"`
+	Enabled bool `yaml:"enabled"`
 }
 
 type MiddlewareConfig struct {
 	Host     string            `yaml:"host"`
 	Port     int               `yaml:"port"`
 	IPFS     IPFSConfig        `yaml:"ipfs"`
-	Postgres PostgresDSNConfig `yaml:"postgres"`
+	Postgres PostgresGormConfig `yaml:"postgres"`
 	Gateway  GatewayConfig     `yaml:"gateway"`
 	Verify   VerifyConfig      `yaml:"verify"`
 }

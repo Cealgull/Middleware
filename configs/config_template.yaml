@@ -21,6 +21,7 @@ postgres:
   prometheus:
     port: 5000
     enabled: false
+  seed: true
 
 verify:
   host: 172.17.0.1

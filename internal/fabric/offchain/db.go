@@ -13,7 +13,7 @@ import (
 
 type PostgresOption func(config *postgres.Config) error
 
-func WithPostgresDSNConfig(config *config.PostgresDSNConfig) PostgresOption {
+func WithPostgresGormConfig(config *config.PostgresGormConfig) PostgresOption {
 	return func(c *postgres.Config) error {
 		c.DSN = fmt.Sprintf("host=%s port=%d user=%s dbname=%s", config.Host, config.Port, config.User, config.Name)
 		return nil
@@ -35,7 +35,7 @@ func NewPostgresDialector(options ...PostgresOption) gorm.Dialector {
 	return postgres.New(dialector)
 }
 
-func NewOffchainStore(dialector gorm.Dialector, promethusConfig *config.PrometheusConfig) (*gorm.DB, error) {
+func NewOffchainStore(dialector gorm.Dialector, config *config.PostgresGormConfig) (*gorm.DB, error) {
 
 	db, err := gorm.Open(dialector, &gorm.Config{
 		FullSaveAssociations: true,
@@ -72,12 +72,12 @@ func NewOffchainStore(dialector gorm.Dialector, promethusConfig *config.Promethe
 		return nil, err
 	}
 
-	if promethusConfig.Enabled {
+	if config.Prometheus.Enabled {
 		var _ = db.Use(prometheus.New(
 			prometheus.Config{
 				DBName:         "cealgull",
 				StartServer:    true,
-				HTTPServerPort: uint32(promethusConfig.Port),
+				HTTPServerPort: uint32(config.Prometheus.Port),
 			},
 		))
 	}
