@@ -68,7 +68,7 @@ func (p *Post) MarshalJSON() ([]byte, error) {
 		CreateAt  time.Time     `json:"createAt"`
 		UpdateAt  time.Time     `json:"updateAt"`
 		ReplyTo   *DisplayReply `json:"replyTo"`
-		Assets    []*Asset      `json:"assets,omitempty"`
+		Assets    []*Asset      `json:"assets"`
 		Upvotes   []string      `json:"upvotes"`
 		Downvotes []string      `json:"downvotes"`
 		BelongTo  string        `json:"belongTo"`
