@@ -39,7 +39,7 @@ func invokeCreateTag(logger *zap.Logger, db *gorm.DB) ChaincodeInvoke {
 
 		b, _ := json.Marshal(&tagBlock)
 
-		if _, err := contract.Submit("CreateTag", client.WithBytesArguments(b)); err != nil {
+		if _, _, err := contract.SubmitAsync("CreateTag", client.WithBytesArguments(b)); err != nil {
 			chaincodeInvokeFailure := ChaincodeInvokeFailureError{"CreateTag"}
 			return c.JSON(chaincodeInvokeFailure.Status(), chaincodeInvokeFailure.Message())
 		}
@@ -102,7 +102,7 @@ func invokeCreateCategory(logger *zap.Logger, db *gorm.DB) ChaincodeInvoke {
 
 		b, _ := json.Marshal(&categoryBlock)
 
-		if _, err := contract.Submit("CreateCategory", client.WithBytesArguments(b)); err != nil {
+		if _, _, err := contract.SubmitAsync("CreateCategory", client.WithBytesArguments(b)); err != nil {
 			chaincodeInvokeFailure := ChaincodeInvokeFailureError{"CreateCategory"}
 			return c.JSON(chaincodeInvokeFailure.Status(), chaincodeInvokeFailure.Message())
 		}
@@ -165,7 +165,7 @@ func invokeCreateCategoryGroup(logger *zap.Logger, db *gorm.DB) ChaincodeInvoke 
 
 		b, _ := json.Marshal(&categoryGroupBlock)
 
-		if _, err := contract.Submit("CreateCategoryGroup", client.WithBytesArguments(b)); err != nil {
+		if _, _, err := contract.SubmitAsync("CreateCategoryGroup", client.WithBytesArguments(b)); err != nil {
 			chaincodeInvokeFailure := ChaincodeInvokeFailureError{"CreateCategoryGroup"}
 			return c.JSON(chaincodeInvokeFailure.Status(), chaincodeInvokeFailure.Message())
 		}

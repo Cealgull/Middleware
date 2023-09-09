@@ -93,7 +93,7 @@ func TestInvokeCreateTag(t *testing.T) {
 		c := server.NewContext(req, rec)
 		c = newMockSignedContext(c)
 
-		contract.On("Submit", "CreateTag", mock.Anything).Return([]byte(nil), errors.New("Hello world")).Once()
+		contract.On("SubmitAsync", "CreateTag", mock.Anything).Return([]byte(nil), (*client.Commit)(nil), errors.New("Hello world")).Once()
 		err := createTag(contract, c)
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusInternalServerError, rec.Code)
@@ -109,7 +109,7 @@ func TestInvokeCreateTag(t *testing.T) {
 		c := server.NewContext(req, rec)
 		c = newMockSignedContext(c)
 
-		contract.On("Submit", "CreateTag", mock.Anything).Return([]byte(nil), nil).Once()
+		contract.On("SubmitAsync", "CreateTag", mock.Anything).Return([]byte(nil), (*client.Commit)(nil), nil).Once()
 		err := createTag(contract, c)
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusOK, rec.Code)
@@ -219,7 +219,7 @@ func TestInvokeCreateCategory(t *testing.T) {
 		c := server.NewContext(req, rec)
 		c = newMockSignedContext(c)
 
-		contract.On("Submit", "CreateCategory", mock.Anything).Return([]byte(nil), errors.New("Hello world")).Once()
+		contract.On("SubmitAsync", "CreateCategory", mock.Anything).Return([]byte(nil), (*client.Commit)(nil), errors.New("Hello world")).Once()
 		err := createCategory(contract, c)
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusInternalServerError, rec.Code)
@@ -235,7 +235,7 @@ func TestInvokeCreateCategory(t *testing.T) {
 		c := server.NewContext(req, rec)
 		c = newMockSignedContext(c)
 
-		contract.On("Submit", "CreateCategory", mock.Anything).Return([]byte(nil), nil).Once()
+		contract.On("SubmitAsync", "CreateCategory", mock.Anything).Return([]byte(nil), (*client.Commit)(nil), nil).Once()
 		err := createCategory(contract, c)
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusOK, rec.Code)
@@ -355,7 +355,7 @@ func TestInvokeCreateCategoryGroup(t *testing.T) {
 		c := server.NewContext(req, rec)
 		c = newMockSignedContext(c)
 
-		contract.On("Submit", "CreateCategoryGroup", mock.Anything).Return([]byte(nil), errors.New("Hello world")).Once()
+		contract.On("SubmitAsync", "CreateCategoryGroup", mock.Anything).Return([]byte(nil), (*client.Commit)(nil), errors.New("Hello world")).Once()
 		err := createCategoryGroup(contract, c)
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusInternalServerError, rec.Code)
@@ -371,7 +371,7 @@ func TestInvokeCreateCategoryGroup(t *testing.T) {
 		c := server.NewContext(req, rec)
 		c = newMockSignedContext(c)
 
-		contract.On("Submit", "CreateCategoryGroup", mock.Anything).Return([]byte(nil), nil).Once()
+		contract.On("SubmitAsync", "CreateCategoryGroup", mock.Anything).Return([]byte(nil), (*client.Commit)(nil), nil).Once()
 		err := createCategoryGroup(contract, c)
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusOK, rec.Code)
