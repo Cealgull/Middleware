@@ -72,7 +72,7 @@ func invokeCreateTopic(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) 
 
 		b, _ := json.Marshal(&topicBlock)
 
-		if _, err := contract.Submit("CreateTopic", client.WithBytesArguments(b)); err != nil {
+		if _, _, err := contract.SubmitAsync("CreateTopic", client.WithBytesArguments(b)); err != nil {
 			chaincodeInvokeFailure := ChaincodeInvokeFailureError{"CreateTopic"}
 			return c.JSON(chaincodeInvokeFailure.Status(), chaincodeInvokeFailure.Message())
 		}
@@ -169,7 +169,7 @@ func invokeDeleteTopic(logger *zap.Logger, db *gorm.DB) ChaincodeInvoke {
 
 		b, _ := json.Marshal(&deleteBlock)
 
-		if _, err := contract.Submit("DeleteTopic", client.WithBytesArguments(b)); err != nil {
+		if _, _, err := contract.SubmitAsync("DeleteTopic", client.WithBytesArguments(b)); err != nil {
 			chaincodeInvokeFailure := ChaincodeInvokeFailureError{"DeleteTopic"}
 			return c.JSON(chaincodeInvokeFailure.Status(), chaincodeInvokeFailure.Message())
 		}
@@ -245,7 +245,7 @@ func invokeUpdateTopic(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) 
 
 		b, _ := json.Marshal(&topicBlock)
 
-		if _, err := contract.Submit("UpdateTopic", client.WithBytesArguments(b)); err != nil {
+		if _, _, err := contract.SubmitAsync("UpdateTopic", client.WithBytesArguments(b)); err != nil {
 			chaincodeInvokeFailure := ChaincodeInvokeFailureError{"UpdateTopic"}
 			return c.JSON(chaincodeInvokeFailure.Status(), chaincodeInvokeFailure.Message())
 		}
@@ -344,7 +344,7 @@ func invokeUpvoteTopic(logger *zap.Logger, db *gorm.DB) ChaincodeInvoke {
 		}
 		b, _ := json.Marshal(&upvoteBlock)
 
-		if _, err := contract.Submit("UpvoteTopic", client.WithBytesArguments(b)); err != nil {
+		if _, _, err := contract.SubmitAsync("UpvoteTopic", client.WithBytesArguments(b)); err != nil {
 			chaincodeInvokeFailure := ChaincodeInvokeFailureError{"UpvoteTopic"}
 			return c.JSON(chaincodeInvokeFailure.Status(), chaincodeInvokeFailure.Message())
 		}
@@ -424,7 +424,7 @@ func invokeDownvoteTopic(logger *zap.Logger, db *gorm.DB) ChaincodeInvoke {
 		}
 		b, _ := json.Marshal(&downvoteBlock)
 
-		if _, err := contract.Submit("DownvoteTopic", client.WithBytesArguments(b)); err != nil {
+		if _, _, err := contract.SubmitAsync("DownvoteTopic", client.WithBytesArguments(b)); err != nil {
 			chaincodeInvokeFailure := ChaincodeInvokeFailureError{"DownvoteTopic"}
 			return c.JSON(chaincodeInvokeFailure.Status(), chaincodeInvokeFailure.Message())
 		}
