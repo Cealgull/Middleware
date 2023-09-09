@@ -40,7 +40,7 @@ def test_auth_login() -> Credential:
     return Credential(wallet=wallet, cookies=cookies, cert=cert)
 
 
-def get_request_handler(credential: Credential) -> Callable[[str, dict], dict]:
+def register_POST_handler(credential: Credential) -> Callable[[str, dict], dict]:
     def f(endpoint: str, payload: dict):
         return requests.post(
             CEALGULL_MIDDLEWARE_HOST + endpoint,
@@ -48,4 +48,12 @@ def get_request_handler(credential: Credential) -> Callable[[str, dict], dict]:
             json=payload,
         ).json()
 
+    return f
+
+
+def register_GET_handler(credential: Credential) -> Callable[[str, dict], dict]:
+    def f(endpoint: str):
+        return requests.get(
+            CEALGULL_MIDDLEWARE_HOST + endpoint, cookies=credential.cookies
+        ).json()
     return f

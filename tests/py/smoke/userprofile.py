@@ -8,7 +8,7 @@ import time
 class UserProfileSmokeTest(unittest.TestCase):
     def setUp(self):
         self.credential = test_auth_login()
-        self.request = get_request_handler(self.credential)
+        self.request = register_POST_handler(self.credential)
 
     def test_0001_update_user(self):
         time.sleep(0.5)
@@ -22,6 +22,7 @@ class UserProfileSmokeTest(unittest.TestCase):
                 "signature": "Genshin Impact is a good game",
             },
         )
+        print(res)
 
         time.sleep(0.5)
 

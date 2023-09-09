@@ -7,7 +7,7 @@ import time
 class PostTestCase(unittest.TestCase):
     def setUp(self):
         self.credentials = test_auth_login()
-        self.request = get_request_handler(self.credentials)
+        self.request = register_POST_handler(self.credentials)
         self.num = TopicTestCase.create_plugs(self.request)
         time.sleep(0.5)
         self.topic_hash = TopicTestCase.create_topic(self.request, self.num)

@@ -64,7 +64,7 @@ class TopicTestCase(unittest.TestCase):
 
     def setUp(self):
         self.credential = test_auth_login()
-        self.request = get_request_handler(self.credential)
+        self.request = register_POST_handler(self.credential)
         self.num = self.create_plugs(self.request)
 
     def test_0001_create_topic(self):
@@ -162,7 +162,12 @@ class TopicTestCase(unittest.TestCase):
             {"hash": hash, "creator": self.credential.wallet},
         )
         time.sleep(0.5)
-        print(self.query_topics(self.request, self.num))
+        self.assertEqual(0, len(self.query_topics(self.request, self.num)))
 
     def test_0008_query_categories(self):
-        print(self.request("/api/topic/query/categories", {}))
+        self.request = register_GET_handler(self.credential)
+        self.assertGreater(len(self.request("/api/topic/query/categories")),0)
+
+    def test_0009_query_tags(self):
+        self.request = register_GET_handler(self.credential)
+        self.assertGreater(len(self.request("/api/topic/query/tags")), 0)
