@@ -3,6 +3,8 @@ package chaincodes
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"math/rand"
 	"net/http"
 
 	"time"
@@ -31,10 +33,11 @@ func invokeCreateUser(logger *zap.Logger, db *gorm.DB) ChaincodeInvoke {
 			return c.JSON(chaincodeDuplicateError.Status(), chaincodeDuplicateError.Message())
 		}
 
+		randUserName := "Alice" + fmt.Sprint(rand.Intn(1000000))
 		block := ProfileBlock{
-			Username:  "Alice",
+			Username:  randUserName,
 			Wallet:    wallet,
-			Signature: "Alice's signature",
+			Signature: randUserName + "'s signature",
 			Muted:     false,
 			Banned:    false,
 		}
