@@ -40,6 +40,7 @@ func NewOffchainStore(dialector gorm.Dialector, config *config.PostgresGormConfi
 
 	db, err := gorm.Open(dialector, &gorm.Config{
 		FullSaveAssociations: true,
+		PrepareStmt:          true,
 		Logger:               logger.Default.LogMode(logger.Warn),
 	})
 
