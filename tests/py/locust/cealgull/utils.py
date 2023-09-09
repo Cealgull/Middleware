@@ -37,9 +37,16 @@ def cealgull_auth_login(user):
     return Credential(wallet=wallet, cookies=cookies, cert=cert)
 
 
-def register_request(user, credential: Credential):
+def register_post(user, credential: Credential):
     def r(url: str, data: dict):
         return user.client.post(
             CEALGULL_MIDDLEWARE_HOST + url, json=data, cookies=credential.cookies
+        )
+    return r
+
+def register_get(user, credential: Credential):
+    def r(url: str):
+        return user.client.get(
+            CEALGULL_MIDDLEWARE_HOST + url, cookies=credential.cookies
         )
     return r
