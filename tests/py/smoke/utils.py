@@ -16,7 +16,7 @@ class Credential:
     cookies: RequestsCookieJar
 
 
-def test_auth_login() -> Credential:
+def test_auth_login(cookies=None) -> Credential:
     priv = ed25519.Ed25519PrivateKey.generate()
     pub = priv.public_key()
     pubb64 = base64.b64encode(pub.public_bytes_raw()).decode()
@@ -32,6 +32,7 @@ def test_auth_login() -> Credential:
         CEALGULL_MIDDLEWARE_HOST + "/auth/login",
         headers={"signature": sig},
         json={"cert": cert},
+        cookies=cookies,
     )
 
     wallet = res.json()["wallet"]
@@ -56,4 +57,5 @@ def register_GET_handler(credential: Credential) -> Callable[[str, dict], dict]:
         return requests.get(
             CEALGULL_MIDDLEWARE_HOST + endpoint, cookies=credential.cookies
         ).json()
+
     return f

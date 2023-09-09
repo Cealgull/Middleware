@@ -36,6 +36,11 @@ class UserProfileSmokeTest(unittest.TestCase):
         self.assertEqual(res["avatar"], "0xsaadfwadf")
         self.assertEqual(res["signature"], "Genshin Impact is a good game")
 
+    def test_0002_credentials(self):
+        time.sleep(0.5)
+        credential2 = test_auth_login(self.credential.cookies)
+        self.assertNotEqual(credential2.cookies, self.credential.cookies)
+
 
 if __name__ == "__main__":
     unittest.main()
