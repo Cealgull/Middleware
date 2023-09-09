@@ -30,7 +30,7 @@ func (e *UploadFileMissingError) Status() int {
 }
 
 func (e *UploadFileMissingError) Error() string {
-	return "Bad Request: Missing file payload when uploading."
+	return "IPFS: Missing file payload when uploading."
 }
 
 func (e *UploadFileMissingError) Message() *proto.ResponseMessage {
@@ -47,7 +47,7 @@ func (e *StorageFileNotFoundError) Status() int {
 }
 
 func (e *StorageFileNotFoundError) Error() string {
-  return "Not Found: File not found."
+  return "IPFS: File not found."
 }
 
 func (e *StorageFileNotFoundError) Message() *proto.ResponseMessage {
@@ -57,7 +57,42 @@ func (e *StorageFileNotFoundError) Message() *proto.ResponseMessage {
   }
 }
 
+type UploadBase64DecodeError struct{}
+
+func (e *UploadBase64DecodeError) Status() int {
+  return http.StatusBadRequest
+}
+
+func (e *UploadBase64DecodeError) Error() string {
+  return "IPFS: Failed to deserialize base64 encoded file."
+}
+
+func (e *UploadBase64DecodeError) Message() *proto.ResponseMessage {
+  return &proto.ResponseMessage{
+    Code:    "B0004",
+    Message: e.Error(),
+  }
+}
+
+type UploadJSONDecodeError struct{}
+
+func (e *UploadJSONDecodeError) Status() int {
+  return http.StatusBadRequest
+}
+
+func (e *UploadJSONDecodeError) Error() string {
+  return "IPFS: Failed to deserialize JSON."
+}
+
+func (e *UploadJSONDecodeError) Message() *proto.ResponseMessage {
+  return &proto.ResponseMessage{
+    Code:    "B0005",
+    Message: e.Error(),
+  }
+}
 
 var success *proto.Success = &proto.Success{}
+var uploadBase64DecodeError *UploadBase64DecodeError = &UploadBase64DecodeError{}
 var uploadFileMissingError *UploadFileMissingError = &UploadFileMissingError{}
+var uploadJSONDecodeError *UploadJSONDecodeError = &UploadJSONDecodeError{}
 var ipfsBackendError *StorageBackendError = &StorageBackendError{}
