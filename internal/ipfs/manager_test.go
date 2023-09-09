@@ -1,10 +1,8 @@
 package ipfs
 
 import (
-	"bytes"
 	"errors"
 	"io"
-	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -41,7 +39,7 @@ func TestNewIPFSManager(t *testing.T) {
 
 	logger, _ := zap.NewProduction()
 	testurl := "localhost"
-  testport := 5001
+	testport := 5001
 	mgr, err := NewIPFSManager(logger, WithUrl(testurl, testport))
 	assert.Nil(t, mgr)
 	assert.Error(t, err)
@@ -99,6 +97,70 @@ func TestIPFSCat(t *testing.T) {
 
 func TestUpload(t *testing.T) {
 
+	t.Run("Payload With Unmarshal Error", func(t *testing.T) {
+
+		_, mgr := newMockIPFSManager(t)
+
+		req := httptest.NewRequest(http.MethodPost, "/api/upload", strings.NewReader("sadas"))
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+
+		c := server.NewContext(req, rec)
+		err := mgr.upload(c)
+
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusBadRequest, c.Response().Status)
+
+	})
+
+	t.Run("Payload With Base64 Encoding Error", func(t *testing.T) {
+
+		_, mgr := newMockIPFSManager(t)
+
+		req := httptest.NewRequest(http.MethodPost, "/api/upload", strings.NewReader(`{"payload":"error"}`))
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+
+		c := server.NewContext(req, rec)
+		err := mgr.upload(c)
+
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusBadRequest, c.Response().Status)
+
+	})
+
+	t.Run("Payload with ipfs error", func(t *testing.T) {
+
+		s, mgr := newMockIPFSManager(t)
+
+		payload := strings.NewReader(`{"payload":"aGVsbG8gd29ybGQ="}`)
+		s.Mock.On("Add", mock.Anything).Return("", errors.New("helloworld")).Once()
+
+		req := httptest.NewRequest(http.MethodPost, "/api/upload", payload)
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+
+		c := server.NewContext(req, rec)
+		var _ = mgr.upload(c)
+		assert.Equal(t, http.StatusInternalServerError, c.Response().Status)
+	})
+
+	t.Run("Payload success", func(t *testing.T) {
+
+		s, mgr := newMockIPFSManager(t)
+
+		payload := strings.NewReader(`{"payload":"aGVsbG8gd29ybGQ="}`)
+		s.Mock.On("Add", mock.Anything).Return("base64", nil).Once()
+
+		req := httptest.NewRequest(http.MethodPost, "/api/upload", payload)
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+
+		c := server.NewContext(req, rec)
+		var _ = mgr.upload(c)
+		assert.Equal(t, http.StatusOK, c.Response().Status)
+	})
+
 	t.Run("Content-type missing", func(t *testing.T) {
 
 		_, mgr := newMockIPFSManager(t)
@@ -124,46 +186,6 @@ func TestUpload(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusBadRequest, c.Response().Status)
-	})
-
-	t.Run("Payload multipart ipfs error", func(t *testing.T) {
-
-		s, mgr := newMockIPFSManager(t)
-
-		body := new(bytes.Buffer)
-		writer := multipart.NewWriter(body)
-		part, _ := writer.CreateFormFile("payload", "test.dat")
-		var _, _ = part.Write([]byte("hello world"))
-
-		writer.Close()
-		s.Mock.On("Add", mock.Anything).Return("", errors.New("helloworld")).Once()
-
-		req := httptest.NewRequest(http.MethodPost, "/api/upload", body)
-		req.Header.Set("Content-Type", writer.FormDataContentType())
-		rec := httptest.NewRecorder()
-
-		c := server.NewContext(req, rec)
-		var _ = mgr.upload(c)
-		assert.Equal(t, http.StatusInternalServerError, c.Response().Status)
-	})
-
-	t.Run("Payload multipartfile success", func(t *testing.T) {
-
-		s, mgr := newMockIPFSManager(t)
-		body := new(bytes.Buffer)
-		writer := multipart.NewWriter(body)
-		part, _ := writer.CreateFormFile("payload", "test.dat")
-		var _, _ = part.Write([]byte("hello world"))
-		writer.Close()
-		s.Mock.On("Add", mock.Anything).Return("1234", nil).Once()
-
-		req := httptest.NewRequest(http.MethodPost, "/api/upload", body)
-		req.Header.Set("Content-Type", writer.FormDataContentType())
-		rec := httptest.NewRecorder()
-
-		c := server.NewContext(req, rec)
-		var _ = mgr.upload(c)
-		assert.Equal(t, http.StatusOK, c.Response().Status)
 	})
 }
 
