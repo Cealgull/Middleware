@@ -30,6 +30,8 @@ services:
       interval: 1s
       timeout: 30s
       retries: 3
+    ports:
+      - "8000:8080"
     networks:
       - cealgull_middleware
 
