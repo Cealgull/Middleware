@@ -1,4 +1,5 @@
 package common
+
 import (
 	"context"
 	client "github.com/hyperledger/fabric-gateway/pkg/client"
@@ -11,5 +12,6 @@ type Network interface {
 
 type Contract interface {
 	Submit(transactionName string, options ...client.ProposalOption) ([]byte, error)
+	SubmitAsync(transactionName string, options ...client.ProposalOption) ([]byte, *client.Commit, error)
 	ChaincodeName() string
 }

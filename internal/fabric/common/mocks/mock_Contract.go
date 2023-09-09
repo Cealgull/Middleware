@@ -18,6 +18,11 @@ func (m *MockContract) Submit(transactionName string, options ...client.Proposal
 	return args.Get(0).([]byte), args.Error(1)
 }
 
+func (m *MockContract) SubmitAsync(transactionName string, options ...client.ProposalOption) ([]byte, *client.Commit, error){
+  args := m.Called(transactionName, options)
+  return args.Get(0).([]byte), args.Get(1).(*client.Commit), args.Error(2)
+}
+
 func (m *MockContract) ChaincodeName() string {
 	args := m.Called()
 	return args.String(0)
