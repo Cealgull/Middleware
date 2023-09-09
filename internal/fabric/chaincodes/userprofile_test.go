@@ -42,7 +42,7 @@ func TestInvokeCreateUser(t *testing.T) {
 		c := server.NewContext(req, rec)
 		c = newMockSignedContext(c)
 
-		var _ = contract.On("Submit", "CreateUser", mock.Anything).Return(mockInvokeResult, nil).Once()
+		var _ = contract.On("SubmitAsync", "CreateUser", mock.Anything).Return(mockInvokeResult, (*client.Commit)(nil), nil).Once()
 		err := i(contract, c)
 		assert.True(t, contract.AssertExpectations(t))
 
@@ -57,7 +57,7 @@ func TestInvokeCreateUser(t *testing.T) {
 		c := server.NewContext(req, rec)
 		c = newMockSignedContext(c)
 
-		var _ = contract.On("Submit", "CreateUser", mock.Anything).Return([]byte(nil), errors.New("Submit Failure")).Once()
+		var _ = contract.On("SubmitAsync", "CreateUser", mock.Anything).Return([]byte(nil), (*client.Commit)(nil), errors.New("Submit Failure")).Once()
 		err := i(contract, c)
 
 		assert.NoError(t, err)
@@ -74,7 +74,7 @@ func TestInvokeCreateUser(t *testing.T) {
 
 		assert.NoError(t, db.Create(&User{Wallet: "0x123456789"}).Error)
 
-		var _ = contract.On("Submit", "CreateUser", mock.Anything).Return([]byte(nil), errors.New("Submit Failure")).Once()
+		var _ = contract.On("SubmitAsync", "CreateUser", mock.Anything).Return([]byte(nil), (*client.Commit)(nil), errors.New("Submit Failure")).Once()
 		err := i(contract, c)
 
 		assert.NoError(t, err)
@@ -181,7 +181,7 @@ func TestInvokeUpdateUser(t *testing.T) {
 
 		c := server.NewContext(req, rec)
 		c = newMockSignedContext(c)
-		contract.On("Submit", "UpdateUser", mock.Anything).Return(mockInvokeResult, nil).Once()
+		contract.On("SubmitAsync", "UpdateUser", mock.Anything).Return(mockInvokeResult, (*client.Commit)(nil), nil).Once()
 		err := u(contract, c)
 
 		assert.NoError(t, err)
@@ -198,7 +198,7 @@ func TestInvokeUpdateUser(t *testing.T) {
 
 		c := server.NewContext(req, rec)
 		c = newMockSignedContext(c)
-		contract.On("Submit", "UpdateUser", mock.Anything).Return([]byte(nil), errors.New("Invoke Failure")).Once()
+		contract.On("SubmitAsync", "UpdateUser", mock.Anything).Return([]byte(nil), (*client.Commit)(nil), errors.New("Invoke Failure")).Once()
 		err := u(contract, c)
 
 		assert.NoError(t, err)
@@ -261,7 +261,7 @@ func TestAuthLogin(t *testing.T) {
 		c := server.NewContext(req, rec)
 		c = newMockSignedContext(c)
 
-		var _ = contract.On("Submit", "CreateUser", mock.Anything).Return(mockInvokeResult, nil).Once()
+		var _ = contract.On("SubmitAsync", "CreateUser", mock.Anything).Return(mockInvokeResult, (*client.Commit)(nil), nil).Once()
 
 		err := login(contract, c)
 		assert.NoError(t, err)

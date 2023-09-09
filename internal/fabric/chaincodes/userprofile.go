@@ -46,7 +46,7 @@ func invokeCreateUser(logger *zap.Logger, db *gorm.DB) ChaincodeInvoke {
 
 		b, _ := json.Marshal(&block)
 
-		if _, err := contract.Submit("CreateUser", client.WithBytesArguments(b)); err != nil {
+		if _, _, err := contract.SubmitAsync("CreateUser", client.WithBytesArguments(b)); err != nil {
 			chaincodeInvokeFailure := ChaincodeInvokeFailureError{"CreateUser"}
 			return c.JSON(chaincodeInvokeFailure.Status(), chaincodeInvokeFailure.Message())
 		}
@@ -132,7 +132,7 @@ func invokeUpdateUser(logger *zap.Logger, db *gorm.DB) ChaincodeInvoke {
 
 		b, _ := json.Marshal(&profile)
 
-		_, err = contract.Submit("UpdateUser", client.WithBytesArguments(b))
+		_, _, err = contract.SubmitAsync("UpdateUser", client.WithBytesArguments(b))
 
 		if err != nil {
 			chaincodeInvokeFailure := ChaincodeInvokeFailureError{"UpdateUser"}
