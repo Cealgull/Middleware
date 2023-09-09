@@ -1,6 +1,8 @@
 package ipfs
 
 import (
+	"bytes"
+	"encoding/base64"
 	"fmt"
 	"io"
 
@@ -32,7 +34,7 @@ func WithIPFSStorage(storage IPFSStorage) IPFSManagerOption {
 
 func WithUrl(url string, port int) IPFSManagerOption {
 	return func(mgr *IPFSManager) error {
-    sh := ipfs.NewShell(fmt.Sprintf("%s:%d", url, port))
+		sh := ipfs.NewShell(fmt.Sprintf("%s:%d", url, port))
 		mgr.storage = sh
 		return nil
 	}
@@ -78,16 +80,30 @@ func (m *IPFSManager) upload(c echo.Context) error {
 		Cid string `json:"cid"`
 	}
 
-	payload, err := c.FormFile("payload")
+	type UploadRequest struct {
+		Payload string `json:"payload"`
+	}
 
-	if err != nil {
+	r := UploadRequest{}
+
+	if c.Bind(&r) != nil {
+		return c.JSON(uploadJSONDecodeError.Status(),
+			uploadJSONDecodeError.Message())
+	}
+
+	if r.Payload == "" {
 		return c.JSON(uploadFileMissingError.Status(),
 			uploadFileMissingError.Message())
 	}
 
-	file, _ := payload.Open()
+	b, err := base64.StdEncoding.DecodeString(r.Payload)
 
-	if cid, err := m.Put(file); err != nil {
+	if err != nil {
+		return c.JSON(uploadBase64DecodeError.Status(),
+			uploadBase64DecodeError.Message())
+	}
+
+	if cid, err := m.Put(bytes.NewReader(b)); err != nil {
 		return c.JSON(err.Status(), err.Message())
 	} else {
 		uploadResponse := UploadResponse{Cid: cid}
