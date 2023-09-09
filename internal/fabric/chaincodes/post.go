@@ -507,7 +507,7 @@ func queryPostsList(logger *zap.Logger, db *gorm.DB) ChaincodeQuery {
 
 			tx = tx.Where("deleted_at IS NULL")
 
-			return tx.Find(&posts).Error
+			return tx.Find(&posts).Order("created_at DESC").Error
 
 		})
 
