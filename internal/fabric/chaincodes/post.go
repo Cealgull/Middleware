@@ -493,6 +493,7 @@ func queryPostsList(logger *zap.Logger, db *gorm.DB) ChaincodeQuery {
 				Preload("Upvotes").
 				Preload("Downvotes").
 				Preload("BelongTo").
+        Preload("Assets").
 				Scopes(paginate(q.PageOrdinal, q.PageSize))
 
 			if q.Creator != "" {
