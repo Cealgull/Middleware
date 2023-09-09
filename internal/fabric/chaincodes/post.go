@@ -77,7 +77,7 @@ func invokeCreatePost(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) C
 
 		b, _ := json.Marshal(&postBlock)
 
-		if _, err := contract.Submit("CreatePost", client.WithBytesArguments(b)); err != nil {
+		if _, _, err := contract.SubmitAsync("CreatePost", client.WithBytesArguments(b)); err != nil {
 			chaincodeInvokeFailure := ChaincodeInvokeFailureError{"CreatePost"}
 			return c.JSON(chaincodeInvokeFailure.Status(), chaincodeInvokeFailure.Message())
 		}
@@ -184,7 +184,7 @@ func invokeDeletePost(logger *zap.Logger, db *gorm.DB) ChaincodeInvoke {
 
 		b, _ := json.Marshal(&deleteBlock)
 
-		if _, err := contract.Submit("DeletePost", client.WithBytesArguments(b)); err != nil {
+		if _, _, err := contract.SubmitAsync("DeletePost", client.WithBytesArguments(b)); err != nil {
 			chaincodeInvokeFailure := ChaincodeInvokeFailureError{"DeletePost"}
 			return c.JSON(chaincodeInvokeFailure.Status(), chaincodeInvokeFailure.Message())
 		}
@@ -247,7 +247,7 @@ func invokeUpdatePost(logger *zap.Logger, ipfs *ipfs.IPFSManager, db *gorm.DB) C
 
 		b, _ := json.Marshal(&postBlock)
 
-		if _, err := contract.Submit("UpdatePost", client.WithBytesArguments(b)); err != nil {
+		if _, _, err := contract.SubmitAsync("UpdatePost", client.WithBytesArguments(b)); err != nil {
 			chaincodeInvokeFailure := ChaincodeInvokeFailureError{"UpdatePost"}
 			return c.JSON(chaincodeInvokeFailure.Status(), chaincodeInvokeFailure.Message())
 		}
@@ -328,7 +328,7 @@ func invokeUpvotePost(logger *zap.Logger, db *gorm.DB) ChaincodeInvoke {
 		}
 		b, _ := json.Marshal(&upvoteBlock)
 
-		if _, err := contract.Submit("UpvotePost", client.WithBytesArguments(b)); err != nil {
+		if _, _, err := contract.SubmitAsync("UpvotePost", client.WithBytesArguments(b)); err != nil {
 			chaincodeInvokeFailure := ChaincodeInvokeFailureError{"UpvotePost"}
 			return c.JSON(chaincodeInvokeFailure.Status(), chaincodeInvokeFailure.Message())
 		}
@@ -408,7 +408,7 @@ func invokeDownvotePost(logger *zap.Logger, db *gorm.DB) ChaincodeInvoke {
 		}
 		b, _ := json.Marshal(&downvoteBlock)
 
-		if _, err := contract.Submit("DownvotePost", client.WithBytesArguments(b)); err != nil {
+		if _, _, err := contract.SubmitAsync("DownvotePost", client.WithBytesArguments(b)); err != nil {
 			chaincodeInvokeFailure := ChaincodeInvokeFailureError{"DownvotePost"}
 			return c.JSON(chaincodeInvokeFailure.Status(), chaincodeInvokeFailure.Message())
 		}
@@ -493,7 +493,7 @@ func queryPostsList(logger *zap.Logger, db *gorm.DB) ChaincodeQuery {
 				Preload("Upvotes").
 				Preload("Downvotes").
 				Preload("BelongTo").
-        Preload("Assets").
+				Preload("Assets").
 				Scopes(paginate(q.PageOrdinal, q.PageSize))
 
 			if q.Creator != "" {
