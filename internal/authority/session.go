@@ -1,7 +1,6 @@
 package authority
 
 import (
-	"fmt"
 
 	"github.com/gorilla/sessions"
 	"github.com/labstack/echo-contrib/session"
