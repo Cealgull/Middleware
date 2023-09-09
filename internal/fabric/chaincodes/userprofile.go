@@ -103,13 +103,23 @@ func invokeUpdateUser(logger *zap.Logger, db *gorm.DB) ChaincodeInvoke {
 				First(&userProfile).Error; err != nil {
 				return err
 			}
-			if !utils.Contains(utils.Map(userProfile.RoleRelationsAssigned, func(r *RoleRelation) string {
-				return r.RoleName
-			}), profile.ActiveRole) || !utils.Contains(utils.Map(userProfile.BadgeRelationsReceived, func(r *BadgeRelation) string {
-				return r.BadgeName
-			}), profile.ActiveBadge) {
-				return errors.New("user does not have the role or badge")
+
+			if profile.ActiveRole != "" {
+				if !utils.Contains(utils.Map(userProfile.RoleRelationsAssigned, func(r *RoleRelation) string {
+					return r.RoleName
+				}), profile.ActiveRole) {
+					return errors.New("The user does not the role")
+				}
 			}
+
+			if profile.ActiveBadge != "" {
+				if !utils.Contains(utils.Map(userProfile.BadgeRelationsReceived, func(r *BadgeRelation) string {
+					return r.BadgeName
+				}), profile.ActiveBadge) {
+					return errors.New("user does not have the role or badge")
+				}
+			}
+
 			return nil
 		})
 
