@@ -1,6 +1,8 @@
 package authority
 
 import (
+	"fmt"
+
 	"github.com/gorilla/sessions"
 	"github.com/labstack/echo-contrib/session"
 	"github.com/labstack/echo/v4"
@@ -31,7 +33,7 @@ func (ca *CertAuthority) ValidateSession(next echo.HandlerFunc) echo.HandlerFunc
 
 		s, _ := session.Get("session", c)
 
-    if v,ok := s.Values["authorized"].(bool); !ok || !v {
+		if v, ok := s.Values["authorized"].(bool); c.Request().URL.RequestURI() == "/auth/login" || !ok || !v {
 
 			var reqcert CACert
 
@@ -50,8 +52,9 @@ func (ca *CertAuthority) ValidateSession(next echo.HandlerFunc) echo.HandlerFunc
 			if err != nil {
 				return c.JSON(err.Status(), err.Message())
 			}
-      
+
 			var _ = ca.signSession(c, cert.Subject.CommonName)
+
 		}
 
 		return next(c)
