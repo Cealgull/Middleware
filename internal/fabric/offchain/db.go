@@ -73,24 +73,26 @@ func NewOffchainStore(dialector gorm.Dialector, config *config.PostgresGormConfi
 		return nil, err
 	}
 
-	if err := db.Model(&User{}).First(&User{}).Error; errors.Is(err, gorm.ErrRecordNotFound) {
-		wallet := "0x12345678"
-		var _ = db.Create(&User{Username: "admin", Avatar: "", Wallet: wallet})
-		var _ = db.Create(&Profile{Signature: "this is a signature", UserWallet: &wallet})
-		var _ = db.Create(&CategoryGroup{Name: "General", Color: "#E25E3E"})
-		var _ = db.Create(&Category{CategoryGroupName: "General", Name: "General Discussion", Color: "#E25E3E"})
-		var _ = db.Create(&Category{CategoryGroupName: "General", Name: "General Topic", Color: "#C63D2F"})
-		var _ = db.Create(&[]*Tag{{CreatorWallet: "0x12345678", Name: "tag1"},
-			{CreatorWallet: "0x12345678", Name: "tag2"},
-			{CreatorWallet: "0x12345678", Name: "tag3"}})
-		var _ = db.Create(&Topic{Title: "this is a test topic",
-			Hash:             "hash1",
-			Content:          "Genshin Impact is a good game",
-			CreatorWallet:    "0x12345678",
-			CategoryAssigned: &CategoryRelation{CategoryName: "General Topic"}})
-    var _ = db.Create(&Post{Hash: "post1Hash", CreatorWallet: "0x12345678", BelongToHash: "hash1", Content: "this is a test post"})
-		id := uint(1)
-    var _ = db.Create(&Post{Hash: "post2Hash", CreatorWallet: "0x12345678", BelongToHash: "hash1", Content: "this is a test post", ReplyToID: &id})
+	if config.Seed {
+		if err := db.Model(&User{}).First(&User{}).Error; errors.Is(err, gorm.ErrRecordNotFound) {
+			wallet := "0x12345678"
+			var _ = db.Create(&User{Username: "admin", Avatar: "", Wallet: wallet})
+			var _ = db.Create(&Profile{Signature: "this is a signature", UserWallet: &wallet})
+			var _ = db.Create(&CategoryGroup{Name: "General", Color: "#E25E3E"})
+			var _ = db.Create(&Category{CategoryGroupName: "General", Name: "General Discussion", Color: "#E25E3E"})
+			var _ = db.Create(&Category{CategoryGroupName: "General", Name: "General Topic", Color: "#C63D2F"})
+			var _ = db.Create(&[]*Tag{{CreatorWallet: "0x12345678", Name: "tag1"},
+				{CreatorWallet: "0x12345678", Name: "tag2"},
+				{CreatorWallet: "0x12345678", Name: "tag3"}})
+			var _ = db.Create(&Topic{Title: "this is a test topic",
+				Hash:             "hash1",
+				Content:          "Genshin Impact is a good game",
+				CreatorWallet:    "0x12345678",
+				CategoryAssigned: &CategoryRelation{CategoryName: "General Topic"}})
+			var _ = db.Create(&Post{Hash: "post1Hash", CreatorWallet: "0x12345678", BelongToHash: "hash1", Content: "this is a test post"})
+			id := uint(1)
+			var _ = db.Create(&Post{Hash: "post2Hash", CreatorWallet: "0x12345678", BelongToHash: "hash1", Content: "this is a test post", ReplyToID: &id})
+		}
 	}
 
 	if config.Prometheus.Enabled {
@@ -101,18 +103,6 @@ func NewOffchainStore(dialector gorm.Dialector, config *config.PostgresGormConfi
 				HTTPServerPort: uint32(config.Prometheus.Port),
 			},
 		))
-	}
-
-	if config.Seed {
-		if !db.Migrator().HasTable(&User{}) {
-			user := &User{Username: "admin", Wallet: "0x0994edd4e11125c26df5ac32553de95c569934cf32f594f54090b423", Avatar: ""}
-			var _ = db.Create(user)
-			var _ = db.Create(&Profile{Signature: "this is admin", UserWallet: &user.Wallet})
-			var _ = db.Create(&CategoryGroup{Name: "General", Color: "#4F709C"})
-			var _ = db.Create(&Category{CategoryGroupName: "General", Name: "General Discussion", Color: "#E5D283"})
-			var _ = db.Create(&Category{CategoryGroupName: "General", Name: "General Topic", Color: "#213555"})
-			var _ = db.Create(&[]Tag{{Name: "Tag1"}, {Name: "Tag2"}, {Name: "Tag3"}, {Name: "Tag4"}, {Name: "Tag5"}})
-		}
 	}
 
 	return db, err
