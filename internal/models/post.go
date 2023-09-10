@@ -83,7 +83,7 @@ func (p *Post) MarshalJSON() ([]byte, error) {
 				return &DisplayReply{
 					Hash:     p.ReplyTo.Hash,
 					Creator:  p.ReplyTo.Creator,
-					Content:  p.Content,
+					Content:  p.ReplyTo.Content,
 					CreateAt: p.ReplyTo.CreatedAt,
 					UpdateAt: p.ReplyTo.UpdatedAt,
 					Assets:   p.ReplyTo.Assets,
