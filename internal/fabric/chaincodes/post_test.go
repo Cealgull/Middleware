@@ -191,7 +191,7 @@ func TestInvokeCreatePost(t *testing.T) {
 		c := server.NewContext(req, rec)
 		c = newMockSignedContext(c)
 
-		contract.On("Submit", "CreatePost", mock.Anything).Return([]byte(nil), errors.New("Hello world")).Once()
+		contract.On("SubmitAsync", "CreatePost", mock.Anything).Return([]byte(nil), (*client.Commit)(nil), errors.New("Hello world")).Once()
 		err := createPost(contract, c)
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusInternalServerError, rec.Code)
@@ -211,7 +211,7 @@ func TestInvokeCreatePost(t *testing.T) {
 		c := server.NewContext(req, rec)
 		c = newMockSignedContext(c)
 
-		contract.On("Submit", "CreatePost", mock.Anything).Return([]byte(nil), nil).Once()
+		contract.On("SubmitAsync", "CreatePost", mock.Anything).Return([]byte(nil), (*client.Commit)(nil), nil).Once()
 		err := createPost(contract, c)
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusOK, rec.Code)
@@ -358,7 +358,7 @@ func TestInvokeDeletePost(t *testing.T) {
 		c := server.NewContext(req, rec)
 		c = newMockSignedContext(c)
 
-		contract.On("Submit", "DeletePost", mock.Anything).Return([]byte(nil), errors.New("Hello world")).Once()
+		contract.On("SubmitAsync", "DeletePost", mock.Anything).Return([]byte(nil), (*client.Commit)(nil), errors.New("Hello world")).Once()
 		err := deletePost(contract, c)
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusInternalServerError, rec.Code)
@@ -374,7 +374,7 @@ func TestInvokeDeletePost(t *testing.T) {
 		c := server.NewContext(req, rec)
 		c = newMockSignedContext(c)
 
-		contract.On("Submit", "DeletePost", mock.Anything).Return([]byte(nil), nil).Once()
+		contract.On("SubmitAsync", "DeletePost", mock.Anything).Return([]byte(nil), (*client.Commit)(nil), nil).Once()
 		err := deletePost(contract, c)
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusOK, rec.Code)
@@ -391,7 +391,7 @@ func TestInvokeDeletePost(t *testing.T) {
 		c := server.NewContext(req, rec)
 		c = newMockSignedContext(c)
 
-		contract.On("Submit", "DeletePost", mock.Anything).Return([]byte(nil), nil).Once()
+		contract.On("SubmitAsync", "DeletePost", mock.Anything).Return([]byte(nil), (*client.Commit)(nil), nil).Once()
 		err := deletePost(contract, c)
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
@@ -511,7 +511,7 @@ func TestInvokeUpdatePost(t *testing.T) {
 		c := server.NewContext(req, rec)
 		c = newMockSignedContext(c)
 
-		contract.On("Submit", "UpdatePost", mock.Anything).Return([]byte(nil), errors.New("Hello world")).Once()
+		contract.On("SubmitAsync", "UpdatePost", mock.Anything).Return([]byte(nil), (*client.Commit)(nil), errors.New("Hello world")).Once()
 		err := updatePost(contract, c)
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusInternalServerError, rec.Code)
@@ -531,7 +531,7 @@ func TestInvokeUpdatePost(t *testing.T) {
 		c := server.NewContext(req, rec)
 		c = newMockSignedContext(c)
 
-		contract.On("Submit", "UpdatePost", mock.Anything).Return([]byte(nil), nil).Once()
+		contract.On("SubmitAsync", "UpdatePost", mock.Anything).Return([]byte(nil), (*client.Commit)(nil), nil).Once()
 		err := updatePost(contract, c)
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusOK, rec.Code)
@@ -647,7 +647,7 @@ func TestInvokeUpvotePost(t *testing.T) {
 		c := server.NewContext(req, rec)
 		c = newMockSignedContext(c)
 
-		contract.On("Submit", "UpvotePost", mock.Anything).Return([]byte(nil), errors.New("Hello world")).Once()
+		contract.On("SubmitAsync", "UpvotePost", mock.Anything).Return([]byte(nil), (*client.Commit)(nil), errors.New("Hello world")).Once()
 		err := upvotePost(contract, c)
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusInternalServerError, rec.Code)
@@ -663,7 +663,7 @@ func TestInvokeUpvotePost(t *testing.T) {
 		c := server.NewContext(req, rec)
 		c = newMockSignedContext(c)
 
-		contract.On("Submit", "UpvotePost", mock.Anything).Return([]byte(nil), nil).Once()
+		contract.On("SubmitAsync", "UpvotePost", mock.Anything).Return([]byte(nil), (*client.Commit)(nil), nil).Once()
 		err := upvotePost(contract, c)
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusOK, rec.Code)
@@ -787,7 +787,7 @@ func TestInvokeDownvotePost(t *testing.T) {
 		c := server.NewContext(req, rec)
 		c = newMockSignedContext(c)
 
-		contract.On("Submit", "DownvotePost", mock.Anything).Return([]byte(nil), errors.New("Hello world")).Once()
+		contract.On("SubmitAsync", "DownvotePost", mock.Anything).Return([]byte(nil), (*client.Commit)(nil), errors.New("Hello world")).Once()
 		err := downvotePost(contract, c)
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusInternalServerError, rec.Code)
@@ -803,7 +803,7 @@ func TestInvokeDownvotePost(t *testing.T) {
 		c := server.NewContext(req, rec)
 		c = newMockSignedContext(c)
 
-		contract.On("Submit", "DownvotePost", mock.Anything).Return([]byte(nil), nil).Once()
+		contract.On("SubmitAsync", "DownvotePost", mock.Anything).Return([]byte(nil), (*client.Commit)(nil), nil).Once()
 		err := downvotePost(contract, c)
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusOK, rec.Code)

@@ -3,6 +3,7 @@ from smoke.topic import *
 import unittest
 import time
 
+lipsum_text = "There are many variations of passages of Lorem Ipsum available, but the majority have suffered alteration in some form, by injected humour, or randomised words which don't look even slightly believable. If you are going to use a passage of Lorem Ipsum, you need to be sure there isn't anything embarrassing hidden in the middle of text. All the Lorem Ipsum generators on the Internet tend to repeat predefined chunks as necessary, making this the first true generator on the Internet. It uses a dictionary of over 200 Latin words, combined with a handful of model sentence structures, to generate Lorem Ipsum which looks reasonable. The generated Lorem Ipsum is therefore always free from repetition, injected humour, or non-characteristic words etc."
 
 class PostTestCase(unittest.TestCase):
     def setUp(self):
@@ -17,10 +18,11 @@ class PostTestCase(unittest.TestCase):
     def create_post(
         cls, request: Callable[[str, dict], dict], topic_hash: str, post_hash: str = ""
     ):
+        rand_int = random.randint(0, 1000000)
         return request(
             "/api/post/invoke/create",
             {
-                "content": "this is a testing post",
+                "content": "testing post: "+ lipsum_text[rand_int % 100 : rand_int % 100 + 50],
                 "images": [],
                 "belongTo": topic_hash,
                 "replyTo": post_hash,
